@@ -2,6 +2,10 @@ package com.andrerinas.openheadunit.aap
 
 import android.content.Context
 import android.content.Intent
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.media.AudioManager
 import android.os.Build
 import com.andrerinas.openheadunit.aap.protocol.Channel
@@ -18,6 +22,10 @@ import com.andrerinas.openheadunit.decoder.audio.MicrophonePolicy
 import com.andrerinas.openheadunit.decoder.video.VideoDecoder
 import com.andrerinas.openheadunit.location.LocationHolder
 import com.andrerinas.openheadunit.App
+import com.andrerinas.openheadunit.aap.protocol.messages.AccelEvent
+import com.andrerinas.openheadunit.aap.protocol.messages.CompassEvent
+import com.andrerinas.openheadunit.aap.protocol.messages.DeadReckoningEvent
+import com.andrerinas.openheadunit.aap.protocol.messages.GyroEvent
 import com.andrerinas.openheadunit.utils.AppLog
 import com.andrerinas.openheadunit.utils.Settings
 import com.andrerinas.openheadunit.utils.Utils
@@ -270,53 +278,106 @@ internal class AapControlSensor(
         aapTransport.send(msg)
         aapTransport.startSensor(request.type.number)
 
-        if (request.type == Sensors.SensorType.NIGHT) {
-            AppLog.i("Night sensor requested. Triggering immediate update.")
-            val intent = Intent(AapService.ACTION_REQUEST_NIGHT_MODE_UPDATE)
-            intent.setPackage(context.packageName)
-            context.sendBroadcast(intent)
-        }
+        val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
 
-        if (request.type == Sensors.SensorType.CAR_SPEED && settings.useObd2) {
-            val obdAddress = settings.obd2Address
-            if (obdAddress.isNotEmpty() && obdAddress != "00:00:00:00:00:00") {
-                val obdIntent = Intent(context, Elm327Service::class.java).apply {
-                    putExtra(Elm327Service.EXTRA_DEVICE_ADDRESS, obdAddress)
-                }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(obdIntent)
-                } else {
-                    context.startService(obdIntent)
-                }
+        when (request.type) {
+            Sensors.SensorType.NIGHT -> {
+                AppLog.i("Night sensor requested. Triggering immediate update.")
+                val intent = Intent(AapService.ACTION_REQUEST_NIGHT_MODE_UPDATE)
+                intent.setPackage(context.packageName)
+                context.sendBroadcast(intent)
             }
-
-            speedJob?.cancel()
-            speedJob = sensorScope.launch {
-                Elm327Service.currentVehicleSpeed.collectLatest { speed ->
-                    if (!aapTransport.isAlive) {
-                        cancel()
-                        return@collectLatest
+            Sensors.SensorType.CAR_SPEED, Sensors.SensorType.DEAD_RECONING -> {
+                if (settings.useObd2) {
+                    val obdAddress = settings.obd2Address
+                    if (obdAddress.isNotEmpty() && obdAddress != "00:00:00:00:00:00") {
+                        val obdIntent = Intent(context, Elm327Service::class.java).apply {
+                            putExtra(Elm327Service.EXTRA_DEVICE_ADDRESS, obdAddress)
+                        }
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            context.startForegroundService(obdIntent)
+                        } else {
+                            context.startService(obdIntent)
+                        }
                     }
-                    aapTransport.send(SpeedEvent(speed))
+
+                    speedJob?.cancel()
+                    speedJob = sensorScope.launch {
+                        Elm327Service.currentVehicleSpeed.collectLatest { speed ->
+                            if (!aapTransport.isAlive) {
+                                cancel()
+                                return@collectLatest
+                            }
+                            aapTransport.send(SpeedEvent(speed))
+                            aapTransport.send(DeadReckoningEvent(speed))
+                        }
+                    }
                 }
             }
-        }
-
-        if (request.type == Sensors.SensorType.LOCATION && settings.useGpsForNavigation) {
-            // The phone only accepts LOCATION events once this request has been answered, which
-            // can land well after TransportStarted (CommManager's own post-handshake flush can
-            // race this and lose). This is the actual earliest point sending can succeed.
-            //
-            // currentGpsFix, not currentLocation: only this head unit's own GPS may be sent as the
-            // car's position. A unit with no antenna attached passes every gate here and never
-            // locks, and the broader accessor would hand it a network fix to send instead.
-            val fix = LocationHolder.currentGpsFix(context)
-            if (fix != null) {
-                val sentOnWire = aapTransport.send(LocationUpdateEvent(fix))
-                AppLog.i("LOCATION sensor requested. Sending current fix immediately. sentOnWire=$sentOnWire")
-            } else {
-                AppLog.i("LOCATION sensor requested. No recent GPS fix to prime with.")
+            Sensors.SensorType.LOCATION -> {
+                if (settings.useGpsForNavigation) {
+                    val fix = LocationHolder.currentGpsFix(context)
+                    if (fix != null) {
+                        val sentOnWire = aapTransport.send(LocationUpdateEvent(fix))
+                        AppLog.i("LOCATION sensor requested. Sending current fix immediately. sentOnWire=$sentOnWire")
+                    } else {
+                        AppLog.i("LOCATION sensor requested. No recent GPS fix to prime with.")
+                    }
+                }
             }
+            Sensors.SensorType.COMPASS -> {
+                val sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
+                if (sensor != null) {
+                    sensorManager.registerListener(object : SensorEventListener {
+                        override fun onSensorChanged(event: SensorEvent) {
+                            if (!aapTransport.isAlive) {
+                                sensorManager.unregisterListener(this)
+                                return
+                            }
+                            val rotationMatrix = FloatArray(9)
+                            SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
+                            val orientation = FloatArray(3)
+                            SensorManager.getOrientation(rotationMatrix, orientation)
+                            val bearing = Math.toDegrees(orientation[0].toDouble()).toFloat()
+                            val pitch = Math.toDegrees(orientation[1].toDouble()).toFloat()
+                            val roll = Math.toDegrees(orientation[2].toDouble()).toFloat()
+                            aapTransport.send(CompassEvent(bearing, pitch, roll))
+                        }
+                        override fun onAccuracyChanged(s: Sensor, a: Int) {}
+                    }, sensor, 100_000)
+                }
+            }
+            Sensors.SensorType.ACCEL -> {
+                val sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+                if (sensor != null) {
+                    sensorManager.registerListener(object : SensorEventListener {
+                        override fun onSensorChanged(event: SensorEvent) {
+                            if (!aapTransport.isAlive) {
+                                sensorManager.unregisterListener(this)
+                                return
+                            }
+                            aapTransport.send(AccelEvent(event.values[0], event.values[1], event.values[2]))
+                        }
+                        override fun onAccuracyChanged(s: Sensor, a: Int) {}
+                    }, sensor, 100_000)
+                }
+            }
+            Sensors.SensorType.GYRO -> {
+                val sensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
+                if (sensor != null) {
+                    sensorManager.registerListener(object : SensorEventListener {
+                        override fun onSensorChanged(event: SensorEvent) {
+                            if (!aapTransport.isAlive) {
+                                sensorManager.unregisterListener(this)
+                                return
+                            }
+                            aapTransport.send(GyroEvent(event.values[0], event.values[1], event.values[2]))
+                        }
+                        override fun onAccuracyChanged(s: Sensor, a: Int) {}
+                    }, sensor, 100_000)
+                }
+            }
+            else -> {}
         }
         return 0
     }

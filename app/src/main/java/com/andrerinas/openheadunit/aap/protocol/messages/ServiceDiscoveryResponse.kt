@@ -44,9 +44,16 @@ internal class ServiceDiscoveryResponse(context: Context, audioConfig: AudioSess
                     sources.addSensors(makeSensorType(Sensors.SensorType.NIGHT))
                     AppLog.i("[ServiceDiscovery] Announcing NIGHT sensor support. Strategy: ${settings.nightMode}")
 
+                    // Announce Compass, Gyroscope and Accelerometer
+                    sources.addSensors(makeSensorType(Sensors.SensorType.COMPASS))
+                    sources.addSensors(makeSensorType(Sensors.SensorType.GYRO))
+                    sources.addSensors(makeSensorType(Sensors.SensorType.ACCEL))
+                    AppLog.i("[ServiceDiscovery] Announcing COMPASS, GYRO, and ACCEL sensor support.")
+
                     if (settings.useObd2) {
                         sources.addSensors(makeSensorType(Sensors.SensorType.CAR_SPEED))
-                        AppLog.i("[ServiceDiscovery] Announcing CAR_SPEED sensor support.")
+                        sources.addSensors(makeSensorType(Sensors.SensorType.DEAD_RECONING))
+                        AppLog.i("[ServiceDiscovery] Announcing CAR_SPEED and DEAD_RECONING (for Raw Speed) sensor support.")
                     }
                 }.build()
             }.build()
