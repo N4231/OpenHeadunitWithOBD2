@@ -108,76 +108,86 @@ class Elm327Service : Service() {
 
         serviceJob?.cancel()
         serviceJob = serviceScope.launch {
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    val hasPermission = checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
-                    if (!hasPermission) {
-                        errorMessage.value = "Bluetooth接続権限がありません"
-                        return@launch
-                    }
-                }
-
-                val bluetoothManager = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
-                val adapter = bluetoothManager.adapter
-
+            while (isActive) {
                 try {
-                    if (adapter.isDiscovering) adapter.cancelDiscovery()
-                } catch (e: Exception) {}
-
-                val device = adapter.getRemoteDevice(address)
-
-                // First try Classic Bluetooth, then fallback to BLE
-                try {
-                    Log.d(TAG, "Trying Classic Bluetooth...")
-                    obdConnection = ClassicObdConnection(device)
-                    obdConnection?.connect()
-                } catch (e: Exception) {
-                    Log.d(TAG, "Classic Bluetooth failed (${e.message}), trying BLE...")
-                    obdConnection?.close()
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-                        obdConnection = BleObdConnection(this@Elm327Service, device)
-                        obdConnection?.connect()
-                    } else {
-                        throw IOException("BLE not supported on this OS version")
-                    }
-                }
-
-                connectionState.value = true
-                connectedDeviceName.value = try { device.name } catch (e: Exception) { null } ?: "OBD2 Device"
-
-                // 1. 初期化コマンド
-                // AT L0: ラインフィードオフ, AT S0: スペースオフで応答速度を最大化
-                val initCommands = listOf("AT Z", "AT E0", "AT L0", "AT S0", "AT H0", "AT AT2", "AT ST 10")
-                for (cmd in initCommands) {
-                    obdConnection?.write(cmd)
-                    val response = obdConnection?.readUntilPrompt()
-                    Log.d(TAG, "CMD: $cmd RESP: $response")
-                    delay(50)
-                }
-
-                var updateCount = 0
-                var frequencyTimer = System.currentTimeMillis()
-
-                // 2. 車速取得ループ
-                while (isActive) {
-                    obdConnection?.write("01 0D")
-                    val response = obdConnection?.readUntilPrompt() ?: ""
-                    if (parseSpeedResponse(response)) {
-                        updateCount++
-                        val now = System.currentTimeMillis()
-                        if (now - frequencyTimer >= 1000) {
-                            updateFrequency.value = updateCount.toFloat()
-                            updateCount = 0
-                            frequencyTimer = now
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        val hasPermission = checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+                        if (!hasPermission) {
+                            errorMessage.value = "Bluetooth接続権限がありません"
+                            return@launch
                         }
                     }
-                    delay(100) // Android Autoが要求する10Hz(100ms間隔)に最適化
+
+                    val bluetoothManager = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
+                    val adapter = bluetoothManager.adapter
+
+                    try {
+                        if (adapter.isDiscovering) adapter.cancelDiscovery()
+                    } catch (e: Exception) {}
+
+                    val device = adapter.getRemoteDevice(address)
+
+                    // First try Classic Bluetooth, then fallback to BLE
+                    try {
+                        Log.d(TAG, "Trying Classic Bluetooth...")
+                        obdConnection = ClassicObdConnection(device)
+                        obdConnection?.connect()
+                    } catch (e: Exception) {
+                        Log.d(TAG, "Classic Bluetooth failed (${e.message}), trying BLE...")
+                        obdConnection?.close()
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+                            obdConnection = BleObdConnection(this@Elm327Service, device)
+                            obdConnection?.connect()
+                        } else {
+                            throw IOException("BLE not supported on this OS version")
+                        }
+                    }
+
+                    connectionState.value = true
+                    connectedDeviceName.value = try { device.name } catch (e: Exception) { null } ?: "OBD2 Device"
+
+                    // 1. 初期化コマンド
+                    // AT L0: ラインフィードオフ, AT S0: スペースオフで応答速度を最大化
+                    val initCommands = listOf("AT Z", "AT E0", "AT L0", "AT S0", "AT H0", "AT AT2", "AT ST 10")
+                    for (cmd in initCommands) {
+                        obdConnection?.write(cmd)
+                        val response = obdConnection?.readUntilPrompt()
+                        Log.d(TAG, "CMD: $cmd RESP: $response")
+                        delay(50)
+                    }
+
+                    var updateCount = 0
+                    var frequencyTimer = System.currentTimeMillis()
+
+                    // 2. 車速取得ループ
+                    while (isActive) {
+                        try {
+                            obdConnection?.write("01 0D")
+                            val response = obdConnection?.readUntilPrompt() ?: ""
+                            if (parseSpeedResponse(response)) {
+                                updateCount++
+                                val now = System.currentTimeMillis()
+                                if (now - frequencyTimer >= 1000) {
+                                    updateFrequency.value = updateCount.toFloat()
+                                    updateCount = 0
+                                    frequencyTimer = now
+                                }
+                            }
+                            delay(100) // Android Autoが要求する10Hz(100ms間隔)に最適化
+                        } catch (e: Exception) {
+                            if (e is CancellationException) throw e
+                            Log.e(TAG, "通信中にエラーが発生しました、再接続を試みます: ${e.message}")
+                            throw e // ループを抜けて再接続処理へ
+                        }
+                    }
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    Log.e(TAG, "OBD2 Connection error", e)
+                    errorMessage.value = "接続エラー: ${e.message} (5秒後に再接続します)"
+                    connectionState.value = false
+                    obdConnection?.close()
+                    delay(5000) // 5秒待機してから再接続
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "OBD2 Connection error", e)
-                errorMessage.value = "接続エラー: ${e.message}"
-                connectionState.value = false
-                obdConnection?.close()
             }
         }
     }
