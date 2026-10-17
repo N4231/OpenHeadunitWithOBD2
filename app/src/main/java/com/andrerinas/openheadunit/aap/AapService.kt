@@ -1,5 +1,6 @@
 package com.andrerinas.openheadunit.aap
 
+import com.andrerinas.openheadunit.connection.SettingsRestartRecovery
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Notification
@@ -184,8 +185,7 @@ class AapService : Service() {
     private var lastAaMediaMetadata: MediaPlayback.MediaMetaData? = null
     private var lastAaPlaybackPositionMs: Long = 0L
     private var lastAaPlaybackIsPlaying: Boolean? = null
-    private var wasPlayingBeforeDisconnect = false
-    private var lastDisconnectTimestampMs = 0L
+    private val reconnectPlayback = ReconnectPlaybackSnapshot()
     private var mediaSessionIsPlaying = false
     private var mediaMetadataDecodeJob: Job? = null
     private var autoResumePlaybackJob: Job? = null
@@ -269,6 +269,7 @@ class AapService : Service() {
      * flow observers that would otherwise update the already-dismissed notification.
      */
     private var isDestroying = false
+    internal val isStopping: Boolean get() = isDestroying
     private var hasEverConnected = false
 
     // Completed when the disconnect teardown has finished giving the network back. The exit path
@@ -326,6 +327,10 @@ class AapService : Service() {
         override fun onReceive(context: Context, intent: Intent) {
             if (Intent.ACTION_MEDIA_BUTTON == intent.action) {
                 AppLog.i("Runtime MEDIA_BUTTON receiver fired")
+                if (!shouldActivateMediaSession()) {
+                    AppLog.d("Runtime MEDIA_BUTTON ignored in Self-Mode to allow local media apps to handle buttons")
+                    return
+                }
                 safeMediaSessionCall {
                     MediaButtonReceiver.handleIntent(it, intent)
                 }
@@ -347,6 +352,8 @@ class AapService : Service() {
      * re-arm does not wake the phone straight back into the session the user just ended.
      */
     @Volatile private var sessionEndedByHand = false
+    // Sessions in a row that ended for a missing projection screen; see ProjectionRaiseDeadlinePolicy.
+    private var unprojectedEndsInARow = 0
     @Volatile
     var userExitCooldownUntil = 0L
 
@@ -367,6 +374,19 @@ class AapService : Service() {
 
     fun isSelfModeActive() = selfLauncherManager.isActive
 
+    private fun shouldActivateMediaSession(): Boolean {
+        return MediaSessionActivationPolicy.shouldActivate(
+            isLoopbackSession = commManager.isLoopbackSession
+        )
+    }
+
+    private fun shouldSyncAaMediaMetadata(): Boolean {
+        return MediaSessionActivationPolicy.shouldSyncAaMetadata(
+            isLoopbackSession = commManager.isLoopbackSession,
+            userPreference = App.provide(this).settings.syncMediaSessionWithAaMetadata
+        )
+    }
+
     /**
      * Whether a Native AA poke or handshake is in flight, for callers outside the service that
      * cannot reach the launcher. Null when Native is not the armed mode.
@@ -375,6 +395,20 @@ class AapService : Service() {
         (wifiLauncherManager.active as? WifiLauncherNative)?.handshakeManager?.isAttemptInFlight()
 
     fun updateMediaSessionState(isPlaying: Boolean) {
+        if (!shouldActivateMediaSession()) {
+            mediaSessionIsPlaying = false
+            safeMediaSessionCall {
+                it.isActive = false
+                it.setPlaybackState(
+                    PlaybackStateCompat.Builder()
+                        .setState(PlaybackStateCompat.STATE_NONE, 0L, 0.0f)
+                        .setActions(0)
+                        .build()
+                )
+            }
+            return
+        }
+
         mediaSessionIsPlaying = isPlaying
         var actions = PlaybackStateCompat.ACTION_STOP or
                 PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
@@ -405,6 +439,10 @@ class AapService : Service() {
     }
 
     private fun applyPlaceholderMediaMetadata() {
+        if (!shouldActivateMediaSession()) {
+            safeMediaSessionCall { it.setMetadata(null) }
+            return
+        }
         safeMediaSessionCall {
             it.setMetadata(
                 MediaMetadataCompat.Builder()
@@ -417,7 +455,7 @@ class AapService : Service() {
 
     private fun refreshMediaSessionMetadataForPrefsChange() {
         if (isDestroying) return
-        val sync = App.provide(this).settings.syncMediaSessionWithAaMetadata
+        val sync = shouldSyncAaMediaMetadata()
         if (!sync) {
             applyPlaceholderMediaMetadata()
             cachedAaAlbumArtBitmap = null
@@ -437,7 +475,7 @@ class AapService : Service() {
     private fun onAaMediaMetadataFromPhone(meta: MediaPlayback.MediaMetaData) {
         if (isDestroying) return
         lastAaMediaMetadata = meta
-        if (!App.provide(this).settings.syncMediaSessionWithAaMetadata) return
+        if (!shouldSyncAaMediaMetadata()) return
         // Avoid showing a previous track's art with new title/artist until decode finishes.
         cachedAaAlbumArtBitmap = null
         scheduleApplyAaMediaMetadata(meta)
@@ -452,7 +490,7 @@ class AapService : Service() {
         lastAaPlaybackIsPlaying = isPlayingFromStatus
         mediaSessionIsPlaying = isPlayingFromStatus
 
-        if (!App.provide(this).settings.syncMediaSessionWithAaMetadata) return
+        if (!shouldSyncAaMediaMetadata()) return
         updateMediaSessionState(isPlayingFromStatus)
         lastAaMediaMetadata?.let { updateMediaNotification(it) }
     }
@@ -467,7 +505,7 @@ class AapService : Service() {
     }
 
     private fun updateMediaNotification(meta: MediaPlayback.MediaMetaData) {
-        if (!App.provide(this).settings.syncMediaSessionWithAaMetadata) return
+        if (!shouldSyncAaMediaMetadata()) return
         mediaNotification.notify(
             metadata = meta,
             playbackSeconds = lastAaPlaybackPositionMs / 1000L,
@@ -484,7 +522,7 @@ class AapService : Service() {
             if (!isActive) return@launch
             withContext(Dispatchers.Main) {
                 if (isDestroying) return@withContext
-                if (!App.provide(this@AapService).settings.syncMediaSessionWithAaMetadata) return@withContext
+                if (!shouldSyncAaMediaMetadata()) return@withContext
                 // Drop stale decode results if newer metadata arrived while we were decoding.
                 if (lastAaMediaMetadata !== meta) return@withContext
                 cachedAaAlbumArtBitmap = bitmap
@@ -519,7 +557,8 @@ class AapService : Service() {
     }
 
     private fun applyAaMediaMetadataToSession(meta: MediaPlayback.MediaMetaData, albumArt: Bitmap?) {
-        val session = mediaSession ?: return
+        if (!shouldSyncAaMediaMetadata()) return
+        if (mediaSession == null) return
         val title = when {
             meta.hasSong() && meta.song.isNotBlank() -> meta.song
             else -> getString(R.string.video)
@@ -1069,6 +1108,9 @@ class AapService : Service() {
             emitSessionState(SessionStateIntent.STATE_FAILED, reason)
             projectingSinceMs = 0L
         }
+        commManager.onUsbHandshakeEnded = { f ->
+            serviceScope.launch(Dispatchers.Main) { usbLauncherManager.onUsbHandshakeEnded(f) }
+        }
         observeConnectionState()
         registerReceivers()
         carKeysManager.registerIdleReceivers(this)
@@ -1081,14 +1123,17 @@ class AapService : Service() {
         // Handle immediate WiFi auto-start check (e.g. if already connected on boot/wake)
         WifiAutoStartReceiver.checkAndStart(this)
 
-        // Initialize MediaSession early and set it active immediately.
-        // This ensures media button routing works even BEFORE an AA connection,
+        // Initialize MediaSession early and set it active immediately if allowed by policy.
+        // This ensures media button routing works even BEFORE an AA connection in remote mode,
         // which is critical for keymap configuration and early button presses.
         if (mediaSession == null) {
             setupMediaSession()
         }
-        safeMediaSessionCall { it.isActive = true }
-        updateMediaSessionState(false) // Set initial PlaybackState so system knows our actions
+        val shouldActivate = shouldActivateMediaSession()
+        safeMediaSessionCall { it.isActive = shouldActivate }
+        if (shouldActivate) {
+            updateMediaSessionState(false) // Set initial PlaybackState so system knows our actions
+        }
 
         commManager.onAaMediaMetadata = { meta -> onAaMediaMetadataFromPhone(meta) }
         commManager.onAaPlaybackStatus = { status -> onAaPlaybackStatusFromPhone(status) }
@@ -1176,16 +1221,34 @@ class AapService : Service() {
     /**
      * Single observer for all [CommManager.ConnectionState] transitions.
      *
-     * Uses [hasEverConnected] to skip the initial [ConnectionState.Disconnected] emission
-     * from StateFlow replay, avoiding a spurious disconnect on startup.
+     * Skips the initial disconnected replay. The terminal snapshot also records physical
+     * success so teardown runs even if this collector missed every live state.
      */
     private fun observeConnectionState() {
+        // CommManager survives service recreation. Ignore only the terminal already present
+        // at subscription setup, not a new end published before this coroutine starts.
+        val initialTerminal = if (!hasEverConnected)
+            commManager.connectionState.value as? CommManager.ConnectionState.Disconnected else null
         serviceScope.launch {
             commManager.connectionState.collect { state ->
+                automaticReconnect.onStateChanged()
+                usbReconnect.onStateChanged()
+                if (state === initialTerminal) return@collect
+                // Activity can advance the handshake before this conflated collector sees
+                // Connected. Every observed live phase must retire obsolete Save launch work.
+                if (state is CommManager.ConnectionState.Connected ||
+                    state is CommManager.ConnectionState.StartingTransport ||
+                    state is CommManager.ConnectionState.HandshakeComplete ||
+                    state is CommManager.ConnectionState.TransportStarted) {
+                    selfLauncherManager.onConnectionEstablished()
+                }
                 when (state) {
                     is CommManager.ConnectionState.Connecting ->
                         emitSessionState(SessionStateIntent.STATE_CONNECTING)
                     is CommManager.ConnectionState.Connected -> {
+                        // Connection resources are already active before projection has a surface.
+                        // Record this boundary so an early handshake cancellation cleans them up.
+                        hasEverConnected = true
                         emitSessionState(SessionStateIntent.STATE_CONNECTED)
                         onConnected()
                     }
@@ -1194,6 +1257,9 @@ class AapService : Service() {
                         quiesceWirelessForWiredSession()
                         StationStandDown.onSessionLive(this@AapService, wifiLockHeldForMs())
                         projectionRaisesThisSession = 0
+                        sessionEndedByHand = false // A mark from a disconnect that found no session.
+                        unprojectedEndsInARow = ProjectionRaiseDeadlinePolicy.endsInARowAfter(
+                            unprojectedEndsInARow, projected = false, userRequested = commManager.attemptUserRequested)
                         armProjectionRaiseDeadline(launchAapProjectionActivity())
                     }
                     is CommManager.ConnectionState.TransportStarted -> {
@@ -1202,9 +1268,10 @@ class AapService : Service() {
                         // Backstop for a skipped Connected; a no-op once onConnected released it.
                         stopDummyVpn(DummyVpnPolicy.Reason.SELF_MODE_SESSION_LIVE)
                         cancelProjectionRaiseDeadline()
+                        unprojectedEndsInARow = ProjectionRaiseDeadlinePolicy.endsInARowAfter(
+                            unprojectedEndsInARow, projected = true, userRequested = false)
                         hasEverConnected = true
                         projectingSinceMs = SystemClock.elapsedRealtime()
-                        usbLauncherManager.projectionHandshakeFailures = 0
                         emitSessionState(SessionStateIntent.STATE_PROJECTING)
                         sendBroadcast(Intent(ACTION_REQUEST_NIGHT_MODE_UPDATE).apply {
                             setPackage(packageName)
@@ -1212,23 +1279,17 @@ class AapService : Service() {
                         maybeAutoResumePlaybackOnReconnect()
                     }
                     is CommManager.ConnectionState.Error -> {
-                        // Nothing may be counted here, and nothing new may be hung off this branch.
-                        // connectionState is a MutableStateFlow, so collection is conflated, and
-                        // startHandshake() calls disconnect() with no suspension point after
-                        // emitting Error — the value is already Disconnected by the time any
-                        // collector resumes, so this branch does not run while the Disconnected one
-                        // below runs normally. Anything that has to count failures counts them
-                        // where they happen; the silent-peer streak lives in CommManager for that
-                        // reason.
-                        if (state.message.contains("Handshake failed")) {
-                            usbLauncherManager.onHandshakeFailed()
-                        }
+                        // The flow is conflated and a synchronous disconnect() follows the emit, so
+                        // count failures where they happen (CommManager.onUsbHandshakeEnded).
                     }
                     is CommManager.ConnectionState.Disconnected -> {
-                        if (hasEverConnected) {
+                        selfLauncherManager.onConnectionEnded(state)
+                        if (hasEverConnected || state.hadPhysicalConnection) {
+                            hasEverConnected = true
                             emitSessionState(
                                 SessionStateIntent.STATE_DISCONNECTED,
                                 when {
+                                    state.isSettingsRestart -> SessionStateIntent.REASON_SETTINGS_RESTART
                                     state.isUserExit -> SessionStateIntent.REASON_USER_EXIT
                                     !state.isClean -> SessionStateIntent.REASON_LINK_LOST
                                     else -> SessionStateIntent.REASON_PHONE_LEFT
@@ -1247,9 +1308,9 @@ class AapService : Service() {
     private fun maybeAutoResumePlaybackOnReconnect() {
         val settings = App.provide(this).settings
         val now = SystemClock.elapsedRealtime()
-        val elapsedSinceDisconnect = now - lastDisconnectTimestampMs
-        val wasPlaying = wasPlayingBeforeDisconnect
-        wasPlayingBeforeDisconnect = false // Consume once so it doesn't fire again on subsequent events
+        val playback = reconnectPlayback.consume(now)
+        val elapsedSinceDisconnect = playback.elapsedMs
+        val wasPlaying = playback.wasPlaying
 
         val shouldResume = AutoResumePlaybackPolicy.shouldResume(
             enabled = settings.autoResumePlaybackOnReconnect,
@@ -1329,13 +1390,20 @@ class AapService : Service() {
         carKeysManager.onSessionStarted(this)
 
         // Reactivate the existing MediaSession (created in onCreate, kept alive across disconnects)
-        safeMediaSessionCall { it.isActive = true }
-        updateMediaSessionState(true)
-        applyPlaceholderMediaMetadata()
+        val shouldActivate = shouldActivateMediaSession()
+        safeMediaSessionCall { it.isActive = shouldActivate }
+        if (shouldActivate) {
+            updateMediaSessionState(true)
+            applyPlaceholderMediaMetadata()
+        } else {
+            updateMediaSessionState(false)
+        }
 
         // Link audio focus state changes to our MediaSession state
         commManager.onAudioFocusStateChanged = { isPlaying ->
-            updateMediaSessionState(isPlaying)
+            if (shouldActivateMediaSession()) {
+                updateMediaSessionState(isPlaying)
+            }
         }
 
         // AapAudio owns focus for the projection session. CommManager requests static focus
@@ -1420,17 +1488,29 @@ class AapService : Service() {
         projectionRaiseJob = serviceScope.launch {
             delay(ProjectionRaiseDeadlinePolicy.DEADLINE_MS)
             if (commManager.connectionState.value is CommManager.ConnectionState.TransportStarted) return@launch
-            when (ProjectionRaiseDeadlinePolicy.actionFor(projectionRaisesThisSession)) {
+            when (ProjectionRaiseDeadlinePolicy.actionFor(projectionRaisesThisSession, unprojectedEndsInARow)) {
                 ProjectionRaiseDeadlinePolicy.Action.RETRY_RAISE -> {
                     AppLog.w("AapService: the handshake finished ${ProjectionRaiseDeadlinePolicy.DEADLINE_MS}ms " +
                         "ago and the projection screen has not come up, so nothing is reading the " +
                         "session. Raising it again.")
                     armProjectionRaiseDeadline(launchAapProjectionActivity())
                 }
-                ProjectionRaiseDeadlinePolicy.Action.END_SESSION -> {
+                ProjectionRaiseDeadlinePolicy.Action.END_AND_RECOVER -> {
                     AppLog.e("AapService: the projection screen never came up, so this session can " +
                         "carry nothing. Ending it so the phone can start a new one.")
-                    commManager.disconnect()
+                    unprojectedEndsInARow++
+                    // Close the formed session gracefully, but keep the service and automatic
+                    // recovery available for the replacement this deadline is asking for.
+                    commManager.disconnect(sendByeBye = true, isUserExit = false, honorKillOnDisconnect = false)
+                }
+                ProjectionRaiseDeadlinePolicy.Action.END_AND_HOLD -> {
+                    AppLog.e("AapService: the projection screen never came up again, so this session ends " +
+                        "and automatic reconnection waits until something asks for it.")
+                    unprojectedEndsInARow++
+                    // A Native re-arm must not wake the phone: that would start the same loop.
+                    sessionEndedByHand = true
+                    commManager.disconnect(sendByeBye = true, isUserExit = false, honorKillOnDisconnect = false,
+                        reason = CommManager.DisconnectReason.PROJECTION_UNRAISED)
                 }
             }
         }
@@ -1534,6 +1614,13 @@ class AapService : Service() {
         applyPlaceholderMediaMetadata()
     }
 
+    // Discovery and USB re-enumeration have different owners. A failed wireless attempt
+    // must not replace the USB device check still owed by the preceding recovery interval.
+    private fun reconnectTimer() =
+        AutomaticReconnect(serviceScope, { commManager.connectionState.value }, { isDestroying })
+    private val automaticReconnect by lazy { reconnectTimer() }
+    private val usbReconnect by lazy { reconnectTimer() }
+
     /**
      * Called by [CommManager.ConnectionState.Disconnected] observer:
      * 1. Refreshing the notification (unless we are already tearing down)
@@ -1542,7 +1629,18 @@ class AapService : Service() {
      * 4. Scheduling a reconnect attempt if applicable (see [scheduleReconnectIfNeeded])
      */
     private fun onDisconnected(state: CommManager.ConnectionState.Disconnected) {
+        // A failed USB open has no live AAP resources to retire. Its Save loop and fallback
+        // still own recovery; an end after the open has run onConnected and needs the full cleanup.
+        if (!state.hadPhysicalConnection && state.settingsRetryOwner?.acceptsSettingsRestart(state) == true) return
         cancelProjectionRaiseDeadline()
+        // Consumed by every end, so a mark that no Native re-arm reads cannot mute a later wake.
+        val endedByHand = sessionEndedByHand
+        sessionEndedByHand = false
+        if (state.isSettingsRestart) {
+            // The timed state gate holds queued wakes during Save. Do not also latch the
+            // deliberate phone-exit gate, which would outlive the retry window.
+            (wifiLauncherManager.active as? WifiLauncherNative)?.handshakeManager?.noteSessionEnded(true)
+        }
         // A bye-bye is a deliberate disconnection, not a wireless failure: the listeners reopen
         // behind it and the stage they report would otherwise read as a reconnect nobody asked for.
         if (!state.isUserExit && state.isClean) {
@@ -1551,6 +1649,9 @@ class AapService : Service() {
         cancelAllBtAutoDisconnects()
         usbLauncherManager.setSwitchingToProjection(false)
         releaseWifiLock()
+        // The Self tun is released when projection becomes live (#1073). Its state at
+        // teardown cannot tell whether a relaunch needs one. Save now relaunches without
+        // restoring a tun; offline legacy Self remains subject to its launch deadline.
         stopDummyVpn(DummyVpnPolicy.Reason.SESSION_ENDED)
 
         // Here rather than in the teardown coroutine below, which runs ~300ms later: the pill is
@@ -1560,9 +1661,8 @@ class AapService : Service() {
         if (!commManager.isConnected) ConnectionStageTracker.endAttempt()
 
         // Stop GpsLocationService and NightModeManager sensor tracking
-        AppLog.i("AapService: Stopping GpsLocationService, NightModeManager and Elm327Service since connection is disconnected")
+        AppLog.i("AapService: Stopping GpsLocationService and NightModeManager since connection is disconnected")
         stopService(GpsLocationService.intent(this))
-        stopService(Intent(this, Elm327Service::class.java))
         nightModeManager?.stop()
 
         carKeysManager.onSessionEnded()
@@ -1574,9 +1674,11 @@ class AapService : Service() {
         mediaMetadataDecodeJob = null
         lastAaMediaMetadata = null
         lastAaPlaybackPositionMs = 0L
-        wasPlayingBeforeDisconnect = (lastAaPlaybackIsPlaying == true)
-        lastDisconnectTimestampMs = SystemClock.elapsedRealtime()
-        AppLog.i("AapService: Disconnected. wasPlayingBeforeDisconnect=$wasPlayingBeforeDisconnect")
+        reconnectPlayback.onDisconnected(
+            lastAaPlaybackIsPlaying,
+            SystemClock.elapsedRealtime(),
+            deliberate = state.isClean || state.isUserExit,
+        )
         lastAaPlaybackIsPlaying = null
         cachedAaAlbumArtBitmap = null
         mediaNotification.cancel()
@@ -1588,8 +1690,15 @@ class AapService : Service() {
         safeMediaSessionCall { it.isActive = false }
         updateMediaSessionState(false)
         serviceScope.launch(Dispatchers.IO) {
+            if (state.isSettingsRestart) {
+                // Reuse the current route only after its workers have released shared resources.
+                commManager.awaitDisconnectComplete()
+                if (commManager.connectionState.value !== state || isDestroying) return@launch
+                restartForAudioSettings(state)
+                return@launch
+            }
             val rearmedAfterWiredSession = rearmWirelessAfterWiredSession()
-            ConnectionArbiter.sessionEnded(wirelessAlreadyRearmed = rearmedAfterWiredSession, userExit = state.isUserExit)
+            ConnectionArbiter.sessionEnded(wirelessAlreadyRearmed = rearmedAfterWiredSession, userExit = state.isUserExit || state.holdsRecovery)
 
             // Read before anything stops the launcher, and remembered. WifiLauncherManager.stop()
             // nulls `active`, so both decisions further down used to be taken from a launcher that
@@ -1624,8 +1733,6 @@ class AapService : Service() {
                     commManager.awaitDisconnectComplete()
                     val launcher = wifiLauncherManager.active as? WifiLauncherNative
                     AppLog.i("AapService: Native AA session ended; keeping the ${launcher?.strategy ?: "wireless"} network up for the phone's return.")
-                    val endedByHand = sessionEndedByHand
-                    sessionEndedByHand = false
                     launcher?.rearmAfterSessionEnd(
                         wakePhone = SessionEndGroupPolicy.wakesPhoneAfterSessionEnd(
                             state.isClean, endedByHand
@@ -1745,8 +1852,97 @@ class AapService : Service() {
             AppLog.i("AapService: User exit cooldown active for ${USER_EXIT_COOLDOWN_MS}ms")
         }
 
-        scheduleReconnectIfNeeded(state)
+        if (!state.isSettingsRestart) scheduleReconnectIfNeeded(state)
     }
+
+    /** Resume the saved route once, then leave further attempts to the ordinary policies. */
+    private suspend fun restartForAudioSettings(
+        state: CommManager.ConnectionState.Disconnected,
+    ) =
+        withContext(Dispatchers.Main) {
+            val settings = App.provide(this@AapService).settings
+            // A launcher can still be active after another peer wins the connection.
+            // The ended session's peer, rather than that launch flag, selects the retry route.
+            val wasSelfMode = state.wasLoopbackSession
+            var selfLaunch = selfLauncherManager.currentLaunch()
+            SettingsRestartRecovery.run(
+                route = when {
+                    wasSelfMode -> "Self"
+                    state.restartEndpoint != null -> "Server"
+                    settings.lastConnectionType == Settings.CONNECTION_TYPE_USB -> "USB"
+                    settings.lastConnectionType == Settings.CONNECTION_TYPE_NEARBY -> "Nearby"
+                    else -> wifiLauncherManager.activeMode.toString()
+                },
+                remainingMs = state.settingsRestartUntilMs - SystemClock.elapsedRealtime(),
+                isCurrent = {
+                    state.acceptsSettingsRestart(commManager.connectionState.value) && !isDestroying &&
+                        selfLauncherManager.currentLaunch() === selfLaunch
+                },
+                retry = {
+                    when {
+                        state.restartEndpoint != null -> withContext(Dispatchers.IO) {
+                            val (ip, port) = state.restartEndpoint
+                            if (!isDestroying) commManager.connect(ip, port, expectedState = state)
+                        }
+                        // Before AA 17.4 the phone dials our 5288 listener. There is no
+                        // outgoing endpoint to reuse: send the Self Mode launch intent again.
+                        wasSelfMode -> {
+                            selfLauncherManager.start(settingsRestart = state)
+                            selfLaunch = selfLauncherManager.currentLaunch()
+                        }
+                        settings.lastConnectionType == Settings.CONNECTION_TYPE_USB ->
+                            usbLauncherManager.restartForSettings(state)
+                        settings.lastConnectionType == Settings.CONNECTION_TYPE_NEARBY ->
+                            (wifiLauncherManager.active as? WifiLauncherHelper)?.nearbyManager
+                                ?.restartForSettings(state.settingsRestartUntilMs)
+                        wifiLauncherManager.activeMode == WifiLauncherMode.NATIVE -> {
+                            // Decompiled AA 17.6.663454: the type 15 (ByeBye) handler records
+                            // every reason except DEVICE_SWITCH as PROTOCOL_BYEBYE_REQUESTED_BY_CAR;
+                            // a missing reason defaults to USER_SELECTION.
+                            // The AA 17.9 log in PR #1047, comment 6069066821, shows automatic
+                            // restart being suppressed after this ByeBye. Save explicitly asks
+                            // us to reconnect, so release its wake hold after transport retirement.
+                            // The deadline bounds recovery; it does not delay the first wake.
+                            state.releaseSettingsWake()
+                            (wifiLauncherManager.active as? WifiLauncherNative)
+                                ?.rearmAfterSessionEnd(wakePhone = true)
+                        }
+                        wifiLauncherManager.active is WifiLauncherHelper ->
+                            (wifiLauncherManager.active as WifiLauncherHelper).refreshAfterSettingsRestart()
+                        else -> wifiLauncherManager.restartDiscovery()
+                    }
+                },
+                awaitRetryCompletion = { usbLauncherManager.awaitSettingsAttempt(state) },
+                isRetryInFlight = { usbLauncherManager.hasSettingsAttempt(state) },
+                resumeAutomatic = {
+                    // The retry has not published a connection. Retire only its Self Mode
+                    // bookkeeping; a later disconnect must not stop an unrelated launcher.
+                    if (wasSelfMode) selfLauncherManager.stopIfCurrent(selfLaunch)
+                    // End Save's special permission, not the device's chance to connect.
+                    // A late re-enumeration may now be ready without another attach event.
+                    // Ordinary admission holds behind Settings/the X and uses the USB episode
+                    // budget; an attached but wedged device cannot block wireless indefinitely.
+                    if (!userExitedAA && settings.lastConnectionType == Settings.CONNECTION_TYPE_USB) {
+                        usbLauncherManager.checkAlreadyConnected(force = true)
+                    }
+                    if (!userExitedAA && !wirelessPausedForSettings &&
+                        !wifiLauncherManager.cancelledByUser && settings.showsWifi() &&
+                        ConnectionArbiter.tryRearmWireless()) {
+                        // Admission already consumed this rearm's wireless debt. A later
+                        // disconnect must not give back the same wireless stack again.
+                        wirelessQuiescedForWiredSession = false
+                        if (!wifiLauncherManager.isActive) initWifiModeWithOptionalWait()
+                        else when (val launcher = wifiLauncherManager.active) {
+                            // WPP can already be negotiating while the AAP state is still Disconnected.
+                            // Refresh credentials without cancelling that newer handshake.
+                            is WifiLauncherNative -> launcher.refreshAfterWake()
+                            is WifiLauncherHelper -> launcher.refreshAfterSettingsRestart()
+                            else -> wifiLauncherManager.restartDiscovery()
+                        }
+                    }
+                },
+            )
+        }
 
     /**
      * Schedules a reconnect attempt 2 seconds after an unexpected disconnect:
@@ -1776,6 +1972,10 @@ class AapService : Service() {
             if (stopsWireless) wifiLauncherManager.stop()
             return
         }
+        if (state.holdsRecovery) {
+            AppLog.i("AapService: not reconnecting by itself, the projection screen could not be raised.")
+            return
+        }
 
         val settings = App.provide(this).settings
 
@@ -1789,10 +1989,8 @@ class AapService : Service() {
             // the line would otherwise announce a restart that is a no-op there.
             if (wifiLauncherManager.active?.hasLocalDiscovery() == true) {
                 AppLog.i("AapService: Disconnected. Restarting discovery loop in 2s...")
-                serviceScope.launch {
-                    delay(2000)
-                    if (!commManager.isConnected)
-                        wifiLauncherManager.restartDiscovery()
+                automaticReconnect.schedule(state, 2000) {
+                    wifiLauncherManager.restartDiscovery()
                 }
             }
             return
@@ -1816,9 +2014,14 @@ class AapService : Service() {
                 return
             }
             AppLog.i("AapService: USB disconnect. Scheduling reconnect check in ${USB_RECONNECT_DELAY_MS}ms...")
-            serviceScope.launch {
-                delay(USB_RECONNECT_DELAY_MS)
-                if (!commManager.isConnected) usbLauncherManager.checkAlreadyConnected(force = true)
+            // Connecting is not success: the USB launcher can defer this check through the
+            // arbiter. Keep it across failed attempts/errors until a session forms or the user
+            // supersedes recovery, even if wireless discovery schedules its own retry meanwhile.
+            val owner = commManager.usbRecheckOwner(state) ?: return
+            usbReconnect.schedule(state, USB_RECONNECT_DELAY_MS,
+                ownsCheck = { commManager.ownsUsbRecheck(owner) }) {
+                // Read when it fires: a Save still owed by this end must not meet the open settings screen.
+                usbLauncherManager.checkAlreadyConnected(force = true, settingsRestart = usbLauncherManager.pendingSettingsRestart())
             }
         }
 
@@ -1826,9 +2029,8 @@ class AapService : Service() {
             val mode = settings.wifiConnectionMode
             if (mode == WifiLauncherMode.AUTO && lastType != Settings.CONNECTION_TYPE_USB) {
                 AppLog.i("AapService: Unclean WiFi disconnect in Auto Mode. Retrying discovery in 2s...")
-                serviceScope.launch {
-                    delay(2000)
-                    if (!commManager.isConnected) wifiLauncherManager.startDiscovery(oneShot = true)
+                automaticReconnect.schedule(state, 2000) {
+                    wifiLauncherManager.startDiscovery(oneShot = true)
                 }
             }
         }
@@ -2745,10 +2947,6 @@ class AapService : Service() {
         releaseWifiLock()
         unregisterNetworkMonitor()
         stopForeground(true)
-
-        // Stop OBD2 Service
-        stopService(Intent(this, Elm327Service::class.java))
-
         wifiLauncherManager.stop(WifiLauncherStopSequence.LAST)
         stopDummyVpn(DummyVpnPolicy.Reason.SERVICE_DESTROYED)
         try {
@@ -2799,6 +2997,31 @@ class AapService : Service() {
             AppLog.i("AapService: killProcessOnDestroy is true. Triggering System.exit(0).")
             System.exit(0)
         }
+    }
+
+    private fun startWirelessForSettings() {
+        // Asked for from the UI, so the user is present: release the boot-loop pause
+        // rather than silently ignoring them.
+        Settings.clearBootLoopState(this)
+        wifiLauncherManager.liftUserCancel("a wireless setting was saved")
+        // Save does not close the screen, so arming now would put the stack up under it.
+        if (wirelessPausedForSettings) {
+            wirelessRearmPendingForSettings = true
+            AppLog.i("AapService: a wireless setting was saved while the settings screen " +
+                "is open; re-arming when it closes.")
+        } else {
+            wifiLauncherManager.setActiveFromSettings()
+        }
+    }
+
+    internal fun stopWirelessForCommand(fromSettings: Boolean) {
+        // Configuration refresh and explicit cancellation have different owners: only the
+        // latter revokes an audio settings retry that may still be waiting for retirement.
+        if (!fromSettings) {
+            commManager.cancelPendingSettingsRestart()
+        }
+        wirelessRearmPendingForSettings = false
+        wifiLauncherManager.stop()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -2865,7 +3088,9 @@ class AapService : Service() {
         }
 
         // Route MEDIA_BUTTON intents to the active MediaSession.
-        safeMediaSessionCall { MediaButtonReceiver.handleIntent(it, intent) }
+        if (shouldActivateMediaSession()) {
+            safeMediaSessionCall { MediaButtonReceiver.handleIntent(it, intent) }
+        }
         // Launch the UI after boot.
         // Direct startActivity() is silently blocked on MIUI/HyperOS even from
         // a foreground service. We use an overlay window trampoline: creating a
@@ -2887,21 +3112,24 @@ class AapService : Service() {
         }
 
         when (intent?.action) {
-            ACTION_START_SELF_MODE       -> selfLauncherManager.start()
-            ACTION_STOP_SELF_MODE        -> selfLauncherManager.stop(wasConnected = commManager.isConnected)
-            ACTION_START_WIRELESS        -> {
-                // Asked for from the UI, so the user is present: release the boot-loop pause
-                // rather than silently ignoring them.
-                Settings.clearBootLoopState(this)
-                wifiLauncherManager.liftUserCancel("a wireless setting was saved")
-                // Save does not close the screen, so arming now would put the stack up under it.
-                if (wirelessPausedForSettings) {
-                    wirelessRearmPendingForSettings = true
-                    AppLog.i("AapService: a wireless setting was saved while the settings screen " +
-                        "is open; re-arming when it closes.")
-                } else {
-                    wifiLauncherManager.setActiveFromSettings()
+            ACTION_START_SELF_MODE       -> {
+                selfLauncherManager.start()
+                safeMediaSessionCall {
+                    it.isActive = false
+                    it.setMetadata(null)
                 }
+                updateMediaSessionState(false)
+            }
+            ACTION_STOP_SELF_MODE        -> {
+                selfLauncherManager.stop(wasConnected = commManager.isConnected)
+                val shouldActivate = shouldActivateMediaSession()
+                safeMediaSessionCall { it.isActive = shouldActivate }
+                if (shouldActivate) {
+                    updateMediaSessionState(false)
+                }
+            }
+            ACTION_START_WIRELESS        -> {
+                startWirelessForSettings()
             }
             ACTION_START_WIRELESS_SCAN   -> {
                 val settings = App.provide(this).settings
@@ -2921,10 +3149,10 @@ class AapService : Service() {
                     wifiLauncherManager.startDiscovery(oneShot = true)
             }
             ACTION_STOP_WIRELESS         -> {
-                wirelessRearmPendingForSettings = false
-                wifiLauncherManager.stop()
+                stopWirelessForCommand(intent?.getBooleanExtra(EXTRA_SETTINGS_REARM, false) == true)
             }
             ACTION_CANCEL_WIRELESS       -> {
+                commManager.cancelPendingSettingsRestart()
                 usbCheckPendingForSettings = false
                 bluetoothLaunchPendingForSettings = false
                 val stage = ConnectionStageTracker.stage.value
@@ -3008,7 +3236,7 @@ class AapService : Service() {
                         val launcher = wifiLauncherManager.active
 
                         if (launcher is WifiLauncherNative) {
-                            launcher.handshakeManager?.selectDriver(mac)
+                            launcher.handshakeManager?.selectDriver(mac, intent?.getBooleanExtra(EXTRA_EXPLICIT_PICK, false) ?: false)
                         } else {
                             ToastUtils.showToast(this, "Native AA mode not active.")
                         }
@@ -3098,6 +3326,7 @@ class AapService : Service() {
                         val pokeIntent = Intent(this@AapService, AapService::class.java).apply {
                             action = ACTION_NATIVE_AA_POKE
                             putExtra(EXTRA_MAC, targetMac)
+                            putExtra(EXTRA_EXPLICIT_PICK, true)
                         }
                         startService(pokeIntent)
                     } else {
@@ -3233,6 +3462,8 @@ class AapService : Service() {
             }
             ACTION_DISCONNECT            -> {
                 AppLog.i("Disconnect action received.")
+                userExitedAA = true
+                (wifiLauncherManager.active as? WifiLauncherNative)?.handshakeManager?.noteSessionEnded(false)
                 // disconnect() has its own early-return when already Disconnected,
                 // and unlike the previous isConnected guard it also covers the
                 // Connecting state, so the UI cancel paths work before handshake
@@ -3243,8 +3474,7 @@ class AapService : Service() {
                 // Caller already invoked commManager.connect(socket); the connectionState
                 // observer in observeConnectionState() handles the rest — nothing to do here.
             }
-            ACTION_CHECK_USB             -> usbLauncherManager.checkAlreadyConnected(
-                force = true,
+            ACTION_CHECK_USB             -> usbLauncherManager.checkOnRequest(
                 userRequested = intent?.getBooleanExtra(EXTRA_USER_REQUESTED, false) == true,
             )
             else                         -> {
@@ -3568,6 +3798,24 @@ class AapService : Service() {
         var instance: AapService? = null
             private set
 
+        /** Apply the wireless part of Save before its caller starts audio retirement/reconnect. */
+        @androidx.annotation.MainThread
+        internal fun applyWirelessSettings(context: Context, startWireless: Boolean) {
+            val service = instance
+            if (service != null) {
+                // A queued service Intent can arrive after legacy Self has reopened its listener.
+                // Both settings UI and service lifecycle run on Main, so finish this stop/rearm
+                // inline before applyAudioSettings is allowed to launch the replacement session.
+                if (startWireless) service.startWirelessForSettings()
+                else service.stopWirelessForCommand(fromSettings = true)
+            } else {
+                context.startService(Intent(context, AapService::class.java).apply {
+                    action = if (startWireless) ACTION_START_WIRELESS else ACTION_STOP_WIRELESS
+                    putExtra(EXTRA_SETTINGS_REARM, true)
+                })
+            }
+        }
+
         /**
          * If set to `true`, the service will call [System.exit] at the very end of [onDestroy].
          * This is used by `killOnDisconnect` to ensure all cleanup (like Car Mode) completes
@@ -3677,6 +3925,8 @@ class AapService : Service() {
 
         /** Ask for the session without raising the projection. See [suppressNextProjectionRaise]. */
         const val EXTRA_NO_UI = "no_ui"
+        /** Wireless configuration refresh from Save, rather than an explicit stop request. */
+        const val EXTRA_SETTINGS_REARM = "settings_rearm"
         /** On [ACTION_CHECK_USB]: the user asked by hand, which lifts the status pill's X. */
         const val EXTRA_USER_REQUESTED = "user_requested"
         /** On [ACTION_CANCEL_WIRELESS]: the X was pressed on a USB attempt, read before it disconnected. */
@@ -3684,6 +3934,7 @@ class AapService : Service() {
         /** On [ACTION_BT_AUTO_START]: the receiver did not raise the home screen over settings. */
         const val EXTRA_UI_HELD = "ui_held"
         const val EXTRA_MAC = "extra_mac"
+        const val EXTRA_EXPLICIT_PICK = "extra_explicit_pick"
         const val EXTRA_ENDPOINT_ID = "extra_endpoint_id"
     }
 }

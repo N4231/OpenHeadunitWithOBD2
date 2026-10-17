@@ -1063,12 +1063,12 @@ class AapProjectionActivity : SurfaceActivity(), IProjectionView.Callbacks, Vide
                             // Don't leave the renderer bar floating over the reconnecting/exit UI;
                             // if the renderer is still broken after a reconnect it re-offers itself.
                             dismissRendererConfirmBanner()
-                            if (!state.isClean && !state.isUserExit) {
+                            if (!state.isClean && !state.isUserExit && !state.isSettingsRestart) {
                                 AppLog.w("AapProjectionActivity: Disconnected unexpectedly.")
                                 ToastUtils.showToast(this@AapProjectionActivity, getString(R.string.wifi_disconnect_toast), Toast.LENGTH_LONG)
                             }
                             // Only finish immediately if the user explicitly exited, it was a clean close, or killOnDisconnect is enabled.
-                            if (state.isUserExit || state.isClean || settings.killOnDisconnect) {
+                            if (!state.isSettingsRestart && (state.isUserExit || state.isClean || settings.killOnDisconnect)) {
                                 AppLog.i("AapProjectionActivity: Finishing because state isUserExit=${state.isUserExit}, isClean=${state.isClean}, killOnDisconnect=${settings.killOnDisconnect}")
                                 hideReconnectingOverlay("the session ended")
                                 finish()
@@ -1104,6 +1104,7 @@ class AapProjectionActivity : SurfaceActivity(), IProjectionView.Callbacks, Vide
                             // Lock the resolution so that orientation changes don't cause re-negotiation
                             HeadUnitScreenConfig.lockResolution()
                             HeadUnitScreenConfig.onMarginsDiverged = ::onMarginsDiverged
+                            HeadUnitScreenConfig.onFallbackAdopted = ::onFallbackAdopted
                             applyOrientationSettings()
 
                             // Handshake done. If the surface is already ready (e.g. reconnect
@@ -2178,6 +2179,14 @@ class AapProjectionActivity : SurfaceActivity(), IProjectionView.Callbacks, Vide
         return reannounced
     }
 
+    /** Called from the receive thread; the layout belongs to the UI thread. */
+    private fun onFallbackAdopted() {
+        runOnUiThread {
+            val view = projectionView as? View ?: return@runOnUiThread
+            ProjectionViewScaler.updateScale(view, videoDecoder.videoWidth, videoDecoder.videoHeight)
+        }
+    }
+
     private fun sendTouchEvent(event: MotionEvent) {
         val action = TouchEvent.motionEventToAction(event) ?: return
         val ts = SystemClock.elapsedRealtime()
@@ -2319,6 +2328,7 @@ class AapProjectionActivity : SurfaceActivity(), IProjectionView.Callbacks, Vide
         autoStartOfferTimer?.cancel()
         autoStartOfferTimer = null
         HeadUnitScreenConfig.onMarginsDiverged = null
+        HeadUnitScreenConfig.onFallbackAdopted = null
         HeadUnitScreenConfig.clearAnnouncedMargins()
         closeCallRaiseEpisode("the projection is going away")
         unregisterAudioModeListener()

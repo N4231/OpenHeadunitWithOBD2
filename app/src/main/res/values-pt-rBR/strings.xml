@@ -482,7 +482,7 @@
     <string name="vehicle_type_car">Carro</string>
     <string name="vehicle_type_truck">Caminhão</string>
     <string name="vehicle_type_motorcycle">Motocicleta</string>
-    <string name="vehicle_type_forced_by_microphone">O microfone da central está desligado, então o Android Auto é informado de que isto é uma motocicleta, qualquer que seja a opção escolhida aqui. É isso que faz o telefone gravar por conta própria.</string>
+    <string name="vehicle_type_forced_by_microphone">O microfone da central está desligado, então o celular usa o próprio. O Android Auto vai ver uma moto.</string>
     <string name="vehicle_id_description">Apenas identificador interno. Alterá-lo fará com que seu celular detecte este como um veículo diferente, redefinindo as preferências do Android Auto para este carro.</string>
     <string name="head_unit_make_label">Fabricante</string>
     <string name="head_unit_make_description">Fabricante da central multimídia</string>
@@ -644,6 +644,8 @@
     <!-- Native USB Driver -->
     <string name="use_libusb">Usar driver USB nativo</string>
     <string name="use_libusb_description">Usa libusb para comunicação. Desative para usar a API USB padrão do Android.</string>
+    <string name="usb_keep_phone_media_audio">Manter o áudio de mídia do smartphone por USB</string>
+    <string name="usb_keep_phone_media_audio_description">O Android Auto pode desativar o áudio de mídia Bluetooth do smartphone para este aparelho durante uma sessão USB. Esta opção impede isso. As chamadas podem ficar no smartphone em vez de no aparelho.</string>
 
     <string name="software_video_decoder">Origem do decodificador de software</string>
     <string name="software_video_decoder_bundled">FFmpeg integrado</string>
@@ -774,6 +776,12 @@
     <string name="onb_change_later">Você pode alterar isso depois nas Configurações.</string>
     <string name="dpi_automatic">Automático</string>
     <string name="dpi_automatic_desc">Usar a densidade do dispositivo</string>
+    <string name="dpi_widescreen_hint">Com %1$d DPI ou menos, o Android Auto mostra o mapa com um cartão de mídia ao lado, e o texto fica menor.</string>
+    <string name="dpi_automatic_desc_canvas">Usa %1$d DPI para %2$s, uma tela de %3$dx%4$d dp</string>
+    <string name="dpi_row_value_format">%1$d (%2$dx%3$d dp)</string>
+    <string name="dpi_row_auto_format">Automático: %1$d (%2$dx%3$d dp)</string>
+    <string name="dpi_row_clamped_format">%1$d, enviado como %2$d (%3$dx%4$d dp)</string>
+    <string name="dpi_clamped_note">O Android Auto precisa de uma tela de pelo menos 748x450 dp, então %1$d DPI é enviado como %2$d.</string>
     <string name="onb_conn_usb_label">USB (ou adaptador)</string>
     <string name="onb_connection_self_detail">O modo autônomo executa o Android Auto neste dispositivo sem conectar um telefone.</string>
     <string name="connection_kind_all">Todos</string>
@@ -787,7 +795,6 @@
     <string name="resolution_high_bandwidth_message">Esta resolução usa muito mais banda e precisa de uma conexão forte: um bom WiFi de 5GHz ou uma conexão USB estável. Se notar travamentos, escolha uma resolução menor.</string>
     <string name="resolution_use_anyway">Usar mesmo assim</string>
     <string name="resolution_use_recommended">Usar recomendada</string>
-    <string name="dpi_automatic_desc_format">Usa a densidade do dispositivo (%1$d DPI)</string>
     <string name="dpi_input_hint">DPI</string>
     <string name="onb_dpi_huge">Enorme</string>
     <string name="onb_vehicle_title">Seu carro</string>
@@ -1024,8 +1031,6 @@
     <string name="preflight_open_location">Localização</string>
     <string name="preflight_later">Mais tarde</string>
     <string name="preflight_invalid_bssid">Endereço WiFi inválido. Insira seis pares hexadecimais (ex: 02:1A:11:FF:3C:4D).</string>
-    <string name="announce_connection_configuration">Pedir um tempo limite de conexão maior</string>
-    <string name="announce_connection_configuration_description">Diz ao Android Auto para esperar 15 segundos em vez de 3 antes de considerar a conexão morta, e para usar buffers de socket maiores. Isso é voltado para um rádio que sai do canal por alguns segundos no meio da sessão e leva a conexão junto. Não foi medido se o seu telefone respeita algo disso.</string>
     <string name="native_aa_ignore_external_bt">Ignorar a verificação de compatibilidade Bluetooth</string>
     <string name="native_aa_ignore_external_bt_description">Esta unidade parece manter o Bluetooth em um módulo separado que o Android não alcança, por isso o Android Auto sem fio é desativado automaticamente. Desativado por padrão. Ative apenas se achar que isso está errado: quando a detecção está certa, a conexão falha silenciosamente e o registro parece normal.</string>
     <string name="native_aa_setup_qr_title">Configurar por código QR</string>
@@ -1239,6 +1244,7 @@
     <string name="connection_issue_banner_stale_endpoint">Seu celular está tentando um endereço de rede antigo desta unidade. Se não conectar, esqueça esta unidade no Android Auto do seu celular e conecte novamente.</string>
     <string name="connection_issue_banner_hands_free_record_refused">O Bluetooth desta unidade recusou a configuração mãos-livres que o Android Auto precisa, então a conexão sem fio pode não iniciar. Um cabo ou outro modo sem fio não precisa disso.</string>
     <string name="connection_issue_banner_home_wifi_rejoined">Esta unidade fica reconectando ao WiFi da sua casa durante o Android Auto, o que pode fazer a imagem travar, principalmente em unidades de 2,4 GHz. Toque para desativar a reconexão automática a essa rede, ou espere até estar fora do alcance dela.</string>
+    <string name="connection_issue_banner_stale_usb_accessory">O Android Auto no celular parou de responder por USB e o app não conseguiu reiniciá-lo. Desconecte o celular, espere cinco segundos e conecte-o de novo.</string>
     <string name="native_aa_wake_remeasure">Medir novamente o despertar por Bluetooth</string>
     <string name="native_aa_wake_verdict_unmeasured">Ainda não medido</string>
     <string name="native_aa_wake_verdict_safe">Seguro nesta unidade</string>

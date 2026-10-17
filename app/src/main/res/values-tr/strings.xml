@@ -482,7 +482,7 @@
     <string name="vehicle_type_car">Otomobil</string>
     <string name="vehicle_type_truck">Kamyon</string>
     <string name="vehicle_type_motorcycle">Motosiklet</string>
-    <string name="vehicle_type_forced_by_microphone">Ana ünite mikrofonu kapalı, bu yüzden burada ne seçilirse seçilsin Android Auto\'ya bunun bir motosiklet olduğu bildirilir. Telefonun kendi başına kayıt yapmasını sağlayan da budur.</string>
+    <string name="vehicle_type_forced_by_microphone">Ana ünite mikrofonu kapalı, bu yüzden telefon kendi mikrofonunu kullanır. Android Auto bir motosiklet görecek.</string>
     <string name="vehicle_id_description">Sadece dahili tanımlayıcıdır. Bunu değiştirmek, telefonunuzun bu aracı farklı bir araç olarak görmesine neden olur ve bu araba için Android Auto tercihlerinizi sıfırlar.</string>
     <string name="head_unit_make_label">Marka</string>
     <string name="head_unit_make_description">Multimedya sistemi üreticisi</string>
@@ -639,6 +639,8 @@
     <!-- Native USB Driver -->
     <string name="use_libusb">Yerel USB Sürücüsünü Kullan</string>
     <string name="use_libusb_description">İletişim için libusb kullanın. Android\'in standart USB API\'sini kullanmak için devre dışı bırakın.</string>
+    <string name="usb_keep_phone_media_audio">USB\'de telefonun medya sesini açık tut</string>
+    <string name="usb_keep_phone_media_audio_description">Android Auto, USB oturumu sırasında telefonun Bluetooth medya sesini bu ana ünite için kapatabilir. Bu seçenek bunu engeller. Aramalar bu durumda ana ünite yerine telefonda kalabilir.</string>
 
     <string name="software_video_decoder">Yazılım Kod Çözücü Kaynağı</string>
     <string name="software_video_decoder_bundled">Yerleşik FFmpeg</string>
@@ -769,6 +771,12 @@
     <string name="onb_change_later">Bunu daha sonra Ayarlar bölümünden değiştirebilirsiniz.</string>
     <string name="dpi_automatic">Otomatik</string>
     <string name="dpi_automatic_desc">Cihaz yoğunluğunu kullan</string>
+    <string name="dpi_widescreen_hint">%1$d DPI veya altında Android Auto haritayı yanında bir medya kartıyla gösterir ve metin küçülür.</string>
+    <string name="dpi_automatic_desc_canvas">%2$s için %1$d DPI kullanır, %3$dx%4$d dp alan</string>
+    <string name="dpi_row_value_format">%1$d (%2$dx%3$d dp)</string>
+    <string name="dpi_row_auto_format">Otomatik: %1$d (%2$dx%3$d dp)</string>
+    <string name="dpi_row_clamped_format">%1$d, %2$d olarak gönderilir (%3$dx%4$d dp)</string>
+    <string name="dpi_clamped_note">Android Auto en az 748x450 dp alan gerektirir, bu yüzden %1$d DPI değeri %2$d olarak gönderilir.</string>
     <string name="onb_conn_usb_label">USB (veya adaptör)</string>
     <string name="onb_connection_self_detail">Bağımsız mod, telefon bağlamadan Android Auto uygulamasını bu cihazda çalıştırır.</string>
     <string name="connection_kind_all">Tümü</string>
@@ -782,7 +790,6 @@
     <string name="resolution_high_bandwidth_message">Bu çözünürlük çok daha fazla bant genişliği kullanır ve güçlü bir bağlantı gerektirir: iyi bir 5GHz WiFi veya kararlı bir USB bağlantısı. Takılma fark ederseniz daha düşük bir çözünürlük seçin.</string>
     <string name="resolution_use_anyway">Yine de kullan</string>
     <string name="resolution_use_recommended">Önerileni kullan</string>
-    <string name="dpi_automatic_desc_format">Cihaz yoğunluğunu kullanır (%1$d DPI)</string>
     <string name="dpi_input_hint">DPI</string>
     <string name="onb_dpi_huge">Devasa</string>
     <string name="onb_vehicle_title">Aracınız</string>
@@ -1018,8 +1025,6 @@
     <string name="preflight_open_location">Konum</string>
     <string name="preflight_later">Daha sonra</string>
     <string name="preflight_invalid_bssid">Geçersiz WiFi adresi. 6 çift onaltılık basamak girin (örn. 02:1A:11:FF:3C:4D).</string>
-    <string name="announce_connection_configuration">Daha uzun bağlantı zaman aşımı iste</string>
-    <string name="announce_connection_configuration_description">Android Auto\'ya bağlantıyı ölü saymadan önce 3 yerine 15 saniye beklemesini ve daha büyük soket arabellekleri kullanmasını söyler. Bu, oturum ortasında birkaç saniyeliğine kanaldan çıkan ve bağlantıyı da beraberinde götüren bir radyo için tasarlanmıştır. Telefonunuzun bunlardan herhangi birine uyup uymadığı ölçülmedi.</string>
     <string name="native_aa_ignore_external_bt">Bluetooth uyumluluk denetimini yoksay</string>
     <string name="native_aa_ignore_external_bt_description">Bu cihaz, Bluetooth\'u Android\'in erişemediği ayrı bir modülde tutuyor gibi görünüyor, bu nedenle kablosuz Android Auto otomatik olarak kapatılır. Varsayılan olarak kapalı. Yalnızca bunun yanlış olduğunu düşünüyorsanız açın: tespit doğruysa bağlantı sessizce başarısız olur ve günlük sorunsuz görünür.</string>
     <string name="native_aa_setup_qr_title">QR kod ile kurulum</string>
@@ -1233,6 +1238,7 @@
     <string name="connection_issue_banner_stale_endpoint">Telefonunuz bu cihazın eski bir ağ adresini deniyor. Bağlanmazsa, telefonunuzdaki Android Auto\'da bu cihazı unutun ve yeniden bağlanın.</string>
     <string name="connection_issue_banner_hands_free_record_refused">Bu cihazın Bluetooth\'u, Android Auto\'nun ihtiyaç duyduğu eller serbest kurulumunu reddetti, bu yüzden kablosuz bağlantı başlamayabilir. Bir kablo veya başka bir kablosuz mod buna ihtiyaç duymaz.</string>
     <string name="connection_issue_banner_home_wifi_rejoined">Bu cihaz Android Auto sırasında ev WiFi\'nize sürekli yeniden bağlanıyor ve bu, özellikle 2,4 GHz cihazlarda görüntünün takılmasına neden olabilir. O ağ için otomatik yeniden bağlanmayı kapatmak için dokunun veya menzilinin dışına çıkana kadar bekleyin.</string>
+    <string name="connection_issue_banner_stale_usb_accessory">Telefondaki Android Auto USB üzerinden yanıt vermeyi bıraktı ve uygulama onu yeniden başlatamadı. Telefonu çıkarın, beş saniye bekleyin ve tekrar takın.</string>
     <string name="native_aa_wake_remeasure">Bluetooth uyandırmasını yeniden ölç</string>
     <string name="native_aa_wake_verdict_unmeasured">Henüz ölçülmedi</string>
     <string name="native_aa_wake_verdict_safe">Bu cihazda güvenli</string>

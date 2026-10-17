@@ -2,12 +2,7 @@ package com.andrerinas.openheadunit.aap
 
 import android.content.Context
 import android.content.Intent
-import android.hardware.Sensor
-import android.hardware.SensorEvent
-import android.hardware.SensorEventListener
-import android.hardware.SensorManager
 import android.media.AudioManager
-import android.os.Build
 import com.andrerinas.openheadunit.aap.protocol.Channel
 import com.andrerinas.openheadunit.aap.protocol.messages.DrivingStatusEvent
 import com.andrerinas.openheadunit.aap.protocol.messages.LocationUpdateEvent
@@ -22,16 +17,12 @@ import com.andrerinas.openheadunit.decoder.audio.MicrophonePolicy
 import com.andrerinas.openheadunit.decoder.video.VideoDecoder
 import com.andrerinas.openheadunit.location.LocationHolder
 import com.andrerinas.openheadunit.App
-import com.andrerinas.openheadunit.aap.protocol.messages.AccelEvent
-import com.andrerinas.openheadunit.aap.protocol.messages.CompassEvent
-import com.andrerinas.openheadunit.aap.protocol.messages.DeadReckoningEvent
-import com.andrerinas.openheadunit.aap.protocol.messages.GyroEvent
 import com.andrerinas.openheadunit.utils.AppLog
+import com.andrerinas.openheadunit.utils.HeadUnitScreenConfig
 import com.andrerinas.openheadunit.utils.Settings
+import com.andrerinas.openheadunit.utils.VideoFallbackPolicy
 import com.andrerinas.openheadunit.utils.Utils
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.collectLatest
-import com.andrerinas.openheadunit.aap.protocol.messages.SpeedEvent
 
 interface AapControl {
     fun execute(message: AapMessage): Int
@@ -106,6 +97,12 @@ internal class AapControlMedia(
     private fun mediaStartRequest(request: Media.Start, channel: Int): Int {
         AppLog.i("Media Start Request %s: session=%d, config_index=%d", Channel.name(channel), request.sessionId, request.configurationIndex)
 
+        // The phone's pick must reach the geometry before the first frame is laid out.
+        if (channel == Channel.ID_VID &&
+            VideoFallbackPolicy.adopts(request.configurationIndex, HeadUnitScreenConfig.hasOfferedFallback())) {
+            HeadUnitScreenConfig.adoptFallback()
+        }
+
         aapTransport.setSessionId(channel, request.sessionId)
         aapTransport.noteAudioSinkStarted(channel)
         aapAudio.preparePlayback(channel)
@@ -121,7 +118,8 @@ internal class AapControlMedia(
             status = Media.Config.ConfigStatus.STATUS_READY
             this.maxUnacked = maxUnacked
 
-            addConfigurationIndices(0)
+            val offered = channel == Channel.ID_VID && HeadUnitScreenConfig.hasOfferedFallback()
+            VideoFallbackPolicy.configurationIndices(offered).forEach { addConfigurationIndices(it) }
         }.build()
         AppLog.i("Config response: %s (maxUnacked=%d)", configResponse, maxUnacked)
         val msg = AapMessage(channel, Media.MsgType.MEDIA_MESSAGE_CONFIG_VALUE, configResponse)
@@ -156,10 +154,12 @@ internal class AapControlMedia(
                 // backlog turn into visible input lag when 2K HEVC is decoded in software.
                 return if (aapTransport.isWireless) 6 else 8
             }
-            // Left wide for hardware decode, deliberately: a keyframe fragments into a dozen or
-            // more messages, so narrowing this stalls the phone mid-keyframe and caps throughput at
-            // window/RTT. The phone does not hold to it either - one told 12 ran our backlog to 120
-            // - so the bound that works is the decoder discarding frames it is behind on.
+            // Keep the hardware path's wider window: shrinking it limits throughput by the
+            // number of outstanding DATA messages and their ACK round-trip time. Credits count
+            // complete DATA messages, not individual fragments of a keyframe.
+            // The advertised window alone is not a memory bound: a captured peer told to use 12
+            // still drove the backlog to 120. The video queue therefore has its own bound for
+            // peers that exceed the window. The software-HEVC window above remains separate.
             return if (aapTransport.isWireless) 12 else 16
         }
 
@@ -278,7 +278,7 @@ internal class AapControlSensor(
         aapTransport.send(msg)
         aapTransport.startSensor(request.type.number)
 
-        val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as android.hardware.SensorManager
 
         when (request.type) {
             Sensors.SensorType.NIGHT -> {
@@ -294,7 +294,7 @@ internal class AapControlSensor(
                         val obdIntent = Intent(context, Elm327Service::class.java).apply {
                             putExtra(Elm327Service.EXTRA_DEVICE_ADDRESS, obdAddress)
                         }
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                             context.startForegroundService(obdIntent)
                         } else {
                             context.startService(obdIntent)
@@ -308,17 +308,17 @@ internal class AapControlSensor(
                                 cancel()
                                 return@collectLatest
                             }
-                            aapTransport.send(SpeedEvent(speed))
-                            aapTransport.send(DeadReckoningEvent(speed))
+                            aapTransport.send(com.andrerinas.openheadunit.aap.protocol.messages.SpeedEvent(speed))
+                            aapTransport.send(com.andrerinas.openheadunit.aap.protocol.messages.DeadReckoningEvent(speed))
                         }
                     }
                 }
             }
             Sensors.SensorType.LOCATION -> {
                 if (settings.useGpsForNavigation) {
-                    val fix = LocationHolder.currentGpsFix(context)
+                    val fix = com.andrerinas.openheadunit.location.LocationHolder.currentGpsFix(context)
                     if (fix != null) {
-                        val sentOnWire = aapTransport.send(LocationUpdateEvent(fix))
+                        val sentOnWire = aapTransport.send(com.andrerinas.openheadunit.aap.protocol.messages.LocationUpdateEvent(fix))
                         AppLog.i("LOCATION sensor requested. Sending current fix immediately. sentOnWire=$sentOnWire")
                     } else {
                         AppLog.i("LOCATION sensor requested. No recent GPS fix to prime with.")
@@ -326,54 +326,54 @@ internal class AapControlSensor(
                 }
             }
             Sensors.SensorType.COMPASS -> {
-                val sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
+                val sensor = sensorManager.getDefaultSensor(android.hardware.Sensor.TYPE_ROTATION_VECTOR)
                 if (sensor != null) {
-                    sensorManager.registerListener(object : SensorEventListener {
-                        override fun onSensorChanged(event: SensorEvent) {
+                    sensorManager.registerListener(object : android.hardware.SensorEventListener {
+                        override fun onSensorChanged(event: android.hardware.SensorEvent) {
                             if (!aapTransport.isAlive) {
                                 sensorManager.unregisterListener(this)
                                 return
                             }
                             val rotationMatrix = FloatArray(9)
-                            SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
+                            android.hardware.SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
                             val orientation = FloatArray(3)
-                            SensorManager.getOrientation(rotationMatrix, orientation)
+                            android.hardware.SensorManager.getOrientation(rotationMatrix, orientation)
                             val bearing = Math.toDegrees(orientation[0].toDouble()).toFloat()
                             val pitch = Math.toDegrees(orientation[1].toDouble()).toFloat()
                             val roll = Math.toDegrees(orientation[2].toDouble()).toFloat()
-                            aapTransport.send(CompassEvent(bearing, pitch, roll))
+                            aapTransport.send(com.andrerinas.openheadunit.aap.protocol.messages.CompassEvent(bearing, pitch, roll))
                         }
-                        override fun onAccuracyChanged(s: Sensor, a: Int) {}
+                        override fun onAccuracyChanged(s: android.hardware.Sensor, a: Int) {}
                     }, sensor, 100_000)
                 }
             }
             Sensors.SensorType.ACCEL -> {
-                val sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+                val sensor = sensorManager.getDefaultSensor(android.hardware.Sensor.TYPE_ACCELEROMETER)
                 if (sensor != null) {
-                    sensorManager.registerListener(object : SensorEventListener {
-                        override fun onSensorChanged(event: SensorEvent) {
+                    sensorManager.registerListener(object : android.hardware.SensorEventListener {
+                        override fun onSensorChanged(event: android.hardware.SensorEvent) {
                             if (!aapTransport.isAlive) {
                                 sensorManager.unregisterListener(this)
                                 return
                             }
-                            aapTransport.send(AccelEvent(event.values[0], event.values[1], event.values[2]))
+                            aapTransport.send(com.andrerinas.openheadunit.aap.protocol.messages.AccelEvent(event.values[0], event.values[1], event.values[2]))
                         }
-                        override fun onAccuracyChanged(s: Sensor, a: Int) {}
+                        override fun onAccuracyChanged(s: android.hardware.Sensor, a: Int) {}
                     }, sensor, 100_000)
                 }
             }
             Sensors.SensorType.GYRO -> {
-                val sensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
+                val sensor = sensorManager.getDefaultSensor(android.hardware.Sensor.TYPE_GYROSCOPE)
                 if (sensor != null) {
-                    sensorManager.registerListener(object : SensorEventListener {
-                        override fun onSensorChanged(event: SensorEvent) {
+                    sensorManager.registerListener(object : android.hardware.SensorEventListener {
+                        override fun onSensorChanged(event: android.hardware.SensorEvent) {
                             if (!aapTransport.isAlive) {
                                 sensorManager.unregisterListener(this)
                                 return
                             }
-                            aapTransport.send(GyroEvent(event.values[0], event.values[1], event.values[2]))
+                            aapTransport.send(com.andrerinas.openheadunit.aap.protocol.messages.GyroEvent(event.values[0], event.values[1], event.values[2]))
                         }
-                        override fun onAccuracyChanged(s: Sensor, a: Int) {}
+                        override fun onAccuracyChanged(s: android.hardware.Sensor, a: Int) {}
                     }, sensor, 100_000)
                 }
             }
@@ -440,7 +440,8 @@ internal class AapControlService(
 
     private fun pingRequest(request: Control.PingRequest, channel: Int): Int {
         val response = Control.PingResponse.newBuilder()
-                .setTimestamp(System.nanoTime())
+                // Echo the phone's correlation token; the two monotonic clocks have different origins.
+                .setTimestamp(request.timestamp)
                 .build()
 
         val msg = AapMessage(channel, Control.ControlMsgType.MESSAGE_PING_RESPONSE_VALUE, response)
@@ -463,6 +464,7 @@ internal class AapControlService(
     }
 
     private fun byebyeRequest(request: Control.ByeByeRequest, channel: Int): Int {
+        aapTransport.notePeerClose()
         AppLog.i("!!! RECEIVED BYEBYE REQUEST FROM PHONE !!! Reason: ${request.reason}")
 
         val msg = AapMessage(channel, Control.ControlMsgType.MESSAGE_BYEBYE_RESPONSE_VALUE, Control.ByeByeResponse.newBuilder().build())
@@ -573,6 +575,12 @@ internal class AapControlGateway(
             return channelOpenRequest(request, message.channel)
         }
 
+        // Type numbers are scoped by service. CONTROL explicitly selects generic control
+        // handling even on an audio/video channel; channel number alone cannot choose the
+        // protobuf schema. ChannelOpen above is handled before the service is established.
+        if (message.flags.toInt() and AapMessageFraming.FLAG_BIT_CONTROL != 0) {
+            return serviceControl.execute(message)
+        }
         when (message.channel) {
             Channel.ID_CTR -> return serviceControl.execute(message)
             Channel.ID_INP -> return touchControl.execute(message)

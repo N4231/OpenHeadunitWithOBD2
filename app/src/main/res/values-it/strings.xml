@@ -489,7 +489,7 @@
     <string name="vehicle_type_car">Auto</string>
     <string name="vehicle_type_truck">Camion</string>
     <string name="vehicle_type_motorcycle">Motocicletta</string>
-    <string name="vehicle_type_forced_by_microphone">Il microfono dell\'unità è disattivato, quindi ad Android Auto viene detto che questa è una motocicletta qualunque cosa venga scelta qui. È questo a far registrare il telefono da solo.</string>
+    <string name="vehicle_type_forced_by_microphone">Il microfono dell\'unità è disattivato, quindi il telefono usa il proprio. Android Auto vedrà una moto.</string>
     <string name="vehicle_id_description">Solo identificatore interno. Modificandolo, il telefono tratterà questo come un veicolo diverso, ripristinando le preferenze di Android Auto per questa auto.</string>
     <string name="head_unit_make_label">Marca</string>
     <string name="head_unit_make_description">Produttore della head unit</string>
@@ -650,6 +650,8 @@
     <!-- Native USB Driver -->
     <string name="use_libusb">Usa driver USB nativo</string>
     <string name="use_libusb_description">Usa libusb per la comunicazione. Disattiva per utilizzare l\'API USB standard di Android.</string>
+    <string name="usb_keep_phone_media_audio">Mantieni attivo l\'audio multimediale del telefono via USB</string>
+    <string name="usb_keep_phone_media_audio_description">Android Auto può disattivare l\'audio multimediale Bluetooth del telefono per questa autoradio durante una sessione USB. Questa opzione lo impedisce. Le chiamate potrebbero quindi restare sul telefono invece che sull\'autoradio.</string>
 
     <string name="software_video_decoder">Sorgente decodificatore software</string>
     <string name="software_video_decoder_bundled">FFmpeg integrato</string>
@@ -779,6 +781,12 @@
     <string name="onb_change_later">Puoi modificarlo più tardi nelle Impostazioni.</string>
     <string name="dpi_automatic">Automatico</string>
     <string name="dpi_automatic_desc">Usa la densità del dispositivo</string>
+    <string name="dpi_widescreen_hint">A %1$d DPI o meno, Android Auto mostra la mappa con una scheda dei contenuti multimediali accanto, e il testo diventa più piccolo.</string>
+    <string name="dpi_automatic_desc_canvas">Usa %1$d DPI per %2$s, un\'area di %3$dx%4$d dp</string>
+    <string name="dpi_row_value_format">%1$d (%2$dx%3$d dp)</string>
+    <string name="dpi_row_auto_format">Automatico: %1$d (%2$dx%3$d dp)</string>
+    <string name="dpi_row_clamped_format">%1$d, inviato come %2$d (%3$dx%4$d dp)</string>
+    <string name="dpi_clamped_note">Android Auto richiede un\'area di almeno 748x450 dp, quindi %1$d DPI viene inviato come %2$d.</string>
     <string name="onb_conn_usb_label">USB (o adattatore)</string>
     <string name="onb_connection_self_detail">La modalità autonoma esegue Android Auto su questo dispositivo senza collegare un telefono.</string>
     <string name="connection_kind_all">Tutti</string>
@@ -792,7 +800,6 @@
     <string name="resolution_high_bandwidth_message">Questa risoluzione consuma molta più banda e richiede una connessione forte: un buon WiFi a 5GHz o una connessione USB stabile. Se noti lag, scegli una risoluzione più bassa.</string>
     <string name="resolution_use_anyway">Usa comunque</string>
     <string name="resolution_use_recommended">Usa consigliata</string>
-    <string name="dpi_automatic_desc_format">Usa la densità del dispositivo (%1$d DPI)</string>
     <string name="dpi_input_hint">DPI</string>
     <string name="onb_dpi_huge">Enorme</string>
     <string name="onb_vehicle_title">La tua auto</string>
@@ -1026,8 +1033,6 @@
     <string name="preflight_open_location">Posizione</string>
     <string name="preflight_later">Più tardi</string>
     <string name="preflight_invalid_bssid">Indirizzo WiFi non valido. Inserisci 6 coppie di cifre esadecimali (es. 02:1A:11:FF:3C:4D).</string>
-    <string name="announce_connection_configuration">Richiedi un timeout di collegamento più lungo</string>
-    <string name="announce_connection_configuration_description">Dice ad Android Auto di attendere 15 secondi anziché 3 prima di considerare il collegamento interrotto, e di usare buffer socket più grandi. È pensato per una radio che esce dal canale per qualche secondo a metà sessione e si porta via la connessione. Non è stato misurato se il telefono ne tiene conto.</string>
     <string name="native_aa_ignore_external_bt">Ignora il controllo di compatibilità Bluetooth</string>
     <string name="native_aa_ignore_external_bt_description">Questa unità sembra gestire il Bluetooth su un modulo separato che Android non riesce a raggiungere, perciò Android Auto wireless viene disattivato automaticamente. Disattivo per impostazione predefinita. Attivalo solo se ritieni che sia sbagliato: quando il rilevamento è corretto, la connessione fallisce senza segnalare nulla e il log sembra a posto.</string>
     <string name="native_aa_setup_qr_title">Configura con codice QR</string>
@@ -1241,6 +1246,7 @@
     <string name="connection_issue_banner_stale_endpoint">Il telefono sta provando un vecchio indirizzo di rete di questa unità. Se non si connette, dimentica questa unità in Android Auto sul telefono e riconnettiti.</string>
     <string name="connection_issue_banner_hands_free_record_refused">Il Bluetooth di questa unità ha rifiutato la configurazione vivavoce richiesta da Android Auto, quindi la connessione wireless potrebbe non avviarsi. Un cavo o un\'altra modalità wireless non ne ha bisogno.</string>
     <string name="connection_issue_banner_home_wifi_rejoined">Questa unità continua a riconnettersi al WiFi di casa durante Android Auto, il che può far scattare l\'immagine, soprattutto sulle unità a 2,4 GHz. Tocca per disattivare la riconnessione automatica a quella rete, oppure aspetta di essere fuori portata.</string>
+    <string name="connection_issue_banner_stale_usb_accessory">Android Auto sul telefono ha smesso di rispondere via USB e l\'app non è riuscita a riavviarlo. Scollega il telefono, aspetta cinque secondi e ricollegalo.</string>
     <string name="native_aa_wake_remeasure">Rimisura il risveglio Bluetooth</string>
     <string name="native_aa_wake_verdict_unmeasured">Non ancora misurato</string>
     <string name="native_aa_wake_verdict_safe">Sicuro su questa unità</string>

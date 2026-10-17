@@ -164,7 +164,12 @@
     <string name="onb_change_later">Anda dapat mengubah ini nanti di Pengaturan.</string>
     <string name="dpi_automatic">Otomatis</string>
     <string name="dpi_automatic_desc">Gunakan kerapatan perangkat</string>
-    <string name="dpi_automatic_desc_format">Menggunakan kerapatan perangkat (%1$d DPI)</string>
+    <string name="dpi_widescreen_hint">Pada %1$d DPI atau lebih rendah, Android Auto menampilkan peta dengan kartu media di sampingnya, dan teks menjadi lebih kecil.</string>
+    <string name="dpi_automatic_desc_canvas">Memakai %1$d DPI untuk %2$s, kanvas %3$dx%4$d dp</string>
+    <string name="dpi_row_value_format">%1$d (%2$dx%3$d dp)</string>
+    <string name="dpi_row_auto_format">Otomatis: %1$d (%2$dx%3$d dp)</string>
+    <string name="dpi_row_clamped_format">%1$d, dikirim sebagai %2$d (%3$dx%4$d dp)</string>
+    <string name="dpi_clamped_note">Android Auto membutuhkan kanvas minimal 748x450 dp, sehingga %1$d DPI dikirim sebagai %2$d.</string>
     <string name="dpi_value_format">%1$d DPI</string>
     <string name="dpi_input_hint">DPI</string>
 
@@ -941,7 +946,7 @@
     <string name="vehicle_type_car">Mobil</string>
     <string name="vehicle_type_truck">Truk</string>
     <string name="vehicle_type_motorcycle">Sepeda Motor</string>
-    <string name="vehicle_type_forced_by_microphone">Mikrofon head unit nonaktif, jadi Android Auto diberi tahu bahwa ini adalah sepeda motor apa pun yang dipilih di sini. Hal itulah yang membuat ponsel merekam secara mandiri.</string>
+    <string name="vehicle_type_forced_by_microphone">Mikrofon head unit nonaktif, jadi ponsel memakai mikrofonnya sendiri. Android Auto akan melihat sepeda motor.</string>
     <string name="vehicle_id_description">Hanya pengenal internal. Mengubah ini akan menyebabkan ponsel memperlakukan unit ini sebagai kendaraan yang berbeda, mengatur ulang preferensi Android Auto untuk mobil ini.</string>
     <string name="head_unit_make_label">Merek</string>
     <string name="head_unit_make_description">Pabrikan head unit</string>
@@ -1089,6 +1094,7 @@
     <string name="connection_issue_banner_hands_free_held">Perangkat lain sudah menggunakan koneksi hands-free unit ini, sehingga ponsel yang dibangunkan tidak dapat menggunakannya. Putuskan sambungan perangkat lain atau matikan Bluetooth-nya, dan unit ini akan mencoba lagi secara otomatis.</string>
     <string name="connection_issue_banner_hands_free_record_refused">Bluetooth unit ini tidak memublikasikan rekaman hands-free yang dibutuhkan aplikasi agar ponsel melihat profil hands-free. Android Auto tidak akan memulai koneksi nirkabel kecuali Bluetooth head unit terhubung dengan profil. Sambungan kabel atau mode nirkabel lainnya tidak memerlukannya.</string>
     <string name="connection_issue_banner_home_wifi_rejoined">Unit ini terus tersambung kembali ke Wi-Fi rumah Anda saat Android Auto berjalan, yang dapat membuat gambar tersendat, terutama pada unit 2.4 GHz. Ketuk untuk mematikan sambung ulang otomatis untuk jaringan tersebut, atau tunggu sampai Anda berada di luar jangkauannya.</string>
+    <string name="connection_issue_banner_stale_usb_accessory">Android Auto di ponsel berhenti merespons lewat USB, dan aplikasi tidak dapat memulai ulang. Cabut ponsel, tunggu lima detik, lalu colokkan kembali.</string>
     <string name="connection_issue_banner_dismiss">Tutup</string>
     <string name="auto_connect_pill_cancel">Hentikan menghubungkan</string>
     <string name="connection_issue_remedy_hotspot_query">Nama dan kata sandi hotspot</string>
@@ -1109,8 +1115,6 @@
     <string name="native_aa_wake_verdict_destructive">Ditahan di unit ini</string>
     <string name="native_aa_wake_remeasure_confirm">Android Auto hanya memulai nirkabel saat melihat koneksi Bluetooth berubah. Jika unit ini sudah memegang tautan hands-free, aplikasi harus memutuskannya untuk memicu perubahan tersebut. Gunakan ini jika nirkabel berhenti menyala sendiri dan Anda bersedia kehilangan hands-free sejenak saat mencoba lagi.</string>
     <string name="native_aa_wake_remeasure_done">Bangun Bluetooth akan diukur lagi pada koneksi berikutnya.</string>
-    <string name="announce_connection_configuration">Minta batas waktu tautan lebih lama</string>
-    <string name="announce_connection_configuration_description">Memberitahu Android Auto untuk menunggu 15 detik sebelum menganggap sambungan mati alih-alih 3 detik, dan menggunakan buffer soket yang lebih besar.</string>
     <string name="native_aa_ignore_external_bt">Abaikan pemeriksaan kompatibilitas Bluetooth</string>
     <string name="native_aa_ignore_external_bt_description">Unit ini tampak menggunakan Bluetooth pada modul terpisah yang tidak dapat dijangkau oleh Android, sehingga Android Auto nirkabel dimatikan secara otomatis. Nonaktif secara default. Aktifkan hanya jika Anda yakin hal itu keliru.</string>
 
@@ -1148,6 +1152,8 @@
     <string name="share_hotspot_qr_error">Tidak dapat mengambil kredensial hotspot Wi-Fi yang aktif. Pastikan hotspot Anda aktif dan Lokasi diaktifkan.</string>
     <string name="use_libusb">Gunakan Driver USB Asli</string>
     <string name="use_libusb_description">Gunakan libusb untuk komunikasi. Nonaktifkan untuk menggunakan API USB standar Android.</string>
+    <string name="usb_keep_phone_media_audio">Pertahankan audio media ponsel lewat USB</string>
+    <string name="usb_keep_phone_media_audio_description">Android Auto dapat mematikan audio media Bluetooth ponsel untuk unit utama ini selama sesi USB. Opsi ini mencegahnya. Panggilan telepon mungkin tetap berada di ponsel, bukan di unit utama.</string>
 
     <string name="btn_show_qr">Tampilkan Kode QR</string>
     <string name="su_needed_keymaps_warning">Peringatan: Head unit Anda harus di-root atau memiliki Shizuku yang terpasang. Jika demikian, Anda harus mengizinkan hak akses SU saat diminta. Tombol setir kemungkinan tidak berfungsi sampai hal ini diperbaiki.</string>

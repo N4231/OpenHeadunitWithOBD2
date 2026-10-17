@@ -540,7 +540,7 @@
     <string name="vehicle_type_car">Auto</string>
     <string name="vehicle_type_truck">Lkw</string>
     <string name="vehicle_type_motorcycle">Motorrad</string>
-    <string name="vehicle_type_forced_by_microphone">Das Mikrofon der Haupteinheit ist aus, daher wird Android Auto unabhängig von der Auswahl hier mitgeteilt, dass dies ein Motorrad ist. Genau das bringt das Telefon dazu, selbst aufzunehmen.</string>
+    <string name="vehicle_type_forced_by_microphone">Das Mikrofon der Haupteinheit ist aus, daher nutzt das Smartphone sein eigenes. Android Auto sieht ein Motorrad.</string>
     <string name="vehicle_id_description">Nur interne Kennung. Eine Änderung bewirkt, dass Ihr Telefon dies als ein anderes Fahrzeug erkennt und Ihre Android Auto-Einstellungen für dieses Auto zurückgesetzt werden.</string>
     <string name="head_unit_make_label">Hersteller</string>
     <string name="head_unit_make_description">Hersteller des Autoradios</string>
@@ -686,6 +686,8 @@
     <string name="settings_reset_failed">Zurücksetzen der Einstellungen fehlgeschlagen: %1$s</string>
     <string name="use_libusb">Nativen USB-Treiber nutzen</string>
     <string name="use_libusb_description">Nutzt libusb für die USB-Verbindung. Deaktivieren, um die Android-Standard-USB-API zu nutzen.</string>
+    <string name="usb_keep_phone_media_audio">Medien-Audio des Smartphones bei USB anlassen</string>
+    <string name="usb_keep_phone_media_audio_description">Android Auto kann bei einer USB-Verbindung das Bluetooth-Medien-Audio des Smartphones für dieses Autoradio abschalten. Diese Option verhindert das. Anrufe bleiben dann eventuell auf dem Smartphone statt im Autoradio.</string>
 
     <string name="software_video_decoder">Software-Decoder-Quelle</string>
     <string name="software_video_decoder_bundled">Integriertes FFmpeg</string>
@@ -816,6 +818,12 @@
     <string name="onb_change_later">Du kannst das später in den Einstellungen ändern.</string>
     <string name="dpi_automatic">Automatisch</string>
     <string name="dpi_automatic_desc">Gerätedichte verwenden</string>
+    <string name="dpi_widescreen_hint">Bei %1$d DPI oder weniger zeigt Android Auto die Karte mit einer Medienkarte daneben, und der Text wird kleiner.</string>
+    <string name="dpi_automatic_desc_canvas">Verwendet %1$d DPI für %2$s, eine Fläche von %3$dx%4$d dp</string>
+    <string name="dpi_row_value_format">%1$d (%2$dx%3$d dp)</string>
+    <string name="dpi_row_auto_format">Automatisch: %1$d (%2$dx%3$d dp)</string>
+    <string name="dpi_row_clamped_format">%1$d, gesendet als %2$d (%3$dx%4$d dp)</string>
+    <string name="dpi_clamped_note">Android Auto braucht eine Fläche von mindestens 748x450 dp. Deshalb werden %1$d DPI als %2$d gesendet.</string>
     <string name="onb_conn_usb_label">USB (oder Adapter)</string>
     <string name="onb_connection_self_detail">Der autonome Modus führt Android Auto auf diesem Gerät ohne verbundenes Telefon aus.</string>
     <string name="connection_kind_all">Alle</string>
@@ -829,7 +837,6 @@
     <string name="resolution_high_bandwidth_message">Diese Auflösung verbraucht viel mehr Bandbreite und braucht eine starke Verbindung: ein gutes 5GHz-WiFi oder eine stabile USB-Verbindung. Bei Rucklern wähle eine niedrigere Auflösung.</string>
     <string name="resolution_use_anyway">Trotzdem verwenden</string>
     <string name="resolution_use_recommended">Empfohlene verwenden</string>
-    <string name="dpi_automatic_desc_format">Verwendet die Gerätedichte (%1$d DPI)</string>
     <string name="dpi_input_hint">DPI</string>
     <string name="onb_dpi_huge">Riesig</string>
     <string name="onb_vehicle_title">Dein Auto</string>
@@ -1029,8 +1036,6 @@
     <string name="preflight_open_location">Standort</string>
     <string name="preflight_later">Später</string>
     <string name="preflight_invalid_bssid">Ungültige WLAN-Adresse. Gib sechs hexadezimale Zahlenpaare ein, z. B. 02:1A:11:FF:3C:4D.</string>
-    <string name="announce_connection_configuration">Um einen längeren Verbindungs-Timeout bitten</string>
-    <string name="announce_connection_configuration_description">Weist Android Auto an, 15 Sekunden statt 3 zu warten, bevor die Verbindung als tot gilt, und größere Socket-Puffer zu verwenden. Das ist für ein Funkmodul gedacht, das mitten in der Sitzung für ein paar Sekunden den Kanal wechselt und die Verbindung dabei mitreißt. Ob dein Telefon das überhaupt beachtet, wurde nicht gemessen.</string>
     <string name="native_aa_ignore_external_bt">Bluetooth-Kompatibilitätsprüfung ignorieren</string>
     <string name="native_aa_ignore_external_bt_description">Dieses Gerät scheint Bluetooth über ein separates Modul zu betreiben, das Android nicht erreichen kann, deshalb wird kabelloses Android Auto automatisch deaktiviert. Standardmäßig aus. Schalte es nur ein, wenn du das für falsch hältst: trifft die Erkennung zu, schlägt die Verbindung ohne Fehlermeldung fehl und das Protokoll sieht sauber aus.</string>
     <string name="native_aa_setup_qr_title">Per QR-Code einrichten</string>
@@ -1242,6 +1247,7 @@
     <string name="connection_issue_banner_stale_endpoint">Dein Telefon versucht eine alte Netzwerkadresse dieses Geräts. Verbindet es sich nicht, vergiss dieses Gerät in Android Auto auf deinem Telefon und verbinde dich erneut.</string>
     <string name="connection_issue_banner_hands_free_record_refused">Das Bluetooth dieses Geräts hat das von Android Auto benötigte Freisprech-Setup abgelehnt, daher startet die drahtlose Verbindung womöglich nicht. Ein Kabel oder ein anderer drahtloser Modus braucht es nicht.</string>
     <string name="connection_issue_banner_home_wifi_rejoined">Dieses Gerät verbindet sich während Android Auto immer wieder mit deinem WLAN zu Hause, wodurch das Bild ruckeln kann, vor allem bei Geräten mit 2,4 GHz. Tippe hier, um die automatische Verbindung zu diesem Netzwerk auszuschalten, oder warte, bis du außer Reichweite bist.</string>
+    <string name="connection_issue_banner_stale_usb_accessory">Android Auto auf dem Smartphone antwortet über USB nicht mehr, und die App konnte es nicht neu starten. Trenne das Smartphone, warte fünf Sekunden und stecke es wieder an.</string>
     <string name="native_aa_wake_remeasure">Bluetooth-Wecken neu messen</string>
     <string name="native_aa_wake_verdict_unmeasured">Noch nicht gemessen</string>
     <string name="native_aa_wake_verdict_safe">Sicher auf diesem Gerät</string>

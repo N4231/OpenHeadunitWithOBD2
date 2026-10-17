@@ -164,7 +164,12 @@
     <string name="onb_change_later">आप इसे बाद में सेटिंग्स में बदल सकते हैं।</string>
     <string name="dpi_automatic">स्वचालित</string>
     <string name="dpi_automatic_desc">डिवाइस घनत्व का उपयोग करें</string>
-    <string name="dpi_automatic_desc_format">डिवाइस घनत्व (%1$d DPI) का उपयोग करता है</string>
+    <string name="dpi_widescreen_hint">%1$d DPI या उससे कम पर Android Auto मैप के बगल में मीडिया कार्ड दिखाता है, और टेक्स्ट छोटा हो जाता है।</string>
+    <string name="dpi_automatic_desc_canvas">%2$s के लिए %1$d DPI इस्तेमाल करता है, यानी %3$dx%4$d dp का कैनवास</string>
+    <string name="dpi_row_value_format">%1$d (%2$dx%3$d dp)</string>
+    <string name="dpi_row_auto_format">स्वचालित: %1$d (%2$dx%3$d dp)</string>
+    <string name="dpi_row_clamped_format">%1$d, %2$d के रूप में भेजा गया (%3$dx%4$d dp)</string>
+    <string name="dpi_clamped_note">Android Auto को कम से कम 748x450 dp का कैनवास चाहिए, इसलिए %1$d DPI को %2$d के रूप में भेजा जाता है।</string>
     <string name="dpi_value_format">%1$d DPI</string>
     <string name="dpi_input_hint">DPI</string>
 
@@ -941,7 +946,7 @@
     <string name="vehicle_type_car">कार</string>
     <string name="vehicle_type_truck">ट्रक</string>
     <string name="vehicle_type_motorcycle">मोटरसाइकिल</string>
-    <string name="vehicle_type_forced_by_microphone">हेड यूनिट माइक्रोफ़ोन बंद है, इसलिए Android Auto को बताया गया है कि यह एक मोटरसाइकिल है।</string>
+    <string name="vehicle_type_forced_by_microphone">हेड यूनिट का माइक्रोफ़ोन बंद है, इसलिए फ़ोन अपना माइक्रोफ़ोन इस्तेमाल करता है। Android Auto को मोटरसाइकिल दिखेगी।</string>
     <string name="vehicle_id_description">केवल आंतरिक पहचानकर्ता। इसे बदलने से आपका फ़ोन इसे एक अलग वाहन के रूप में मानेगा।</string>
     <string name="head_unit_make_label">निर्माता</string>
     <string name="head_unit_make_description">हेड यूनिट निर्माता</string>
@@ -1089,6 +1094,7 @@
     <string name="connection_issue_banner_hands_free_held">कोई अन्य डिवाइस पहले से ही इस यूनिट के हैंड्स-फ़्री कनेक्शन का उपयोग कर रहा है। दूसरे डिवाइस को डिस्कनेक्ट करें या उसका ब्लूटूथ बंद करें।</string>
     <string name="connection_issue_banner_hands_free_record_refused">इस यूनिट का ब्लूटूथ हैंड्स-फ़्री रिकॉर्ड प्रकाशित नहीं करेगा जिसकी ऐप को आवश्यकता है। केबल या अन्य वायरलेस मोड से कनेक्ट करने पर इसकी आवश्यकता नहीं होती है।</string>
     <string name="connection_issue_banner_home_wifi_rejoined">यह यूनिट Android Auto के दौरान आपके घर के वाई-फ़ाई से बार-बार दोबारा जुड़ती है, जिससे तस्वीर अटक सकती है, खासकर 2.4 GHz वाली यूनिट पर। उस नेटवर्क के लिए ऑटो-रीकनेक्ट बंद करने के लिए टैप करें, या उसकी रेंज से बाहर होने तक प्रतीक्षा करें।</string>
+    <string name="connection_issue_banner_stale_usb_accessory">फ़ोन पर Android Auto ने USB पर जवाब देना बंद कर दिया, और ऐप उसे फिर से शुरू नहीं कर सका। फ़ोन को निकालें, पाँच सेकंड रुकें और उसे दोबारा लगाएँ।</string>
     <string name="connection_issue_banner_dismiss">खारिज करें</string>
     <string name="auto_connect_pill_cancel">कनेक्ट करना रोकें</string>
     <string name="connection_issue_remedy_hotspot_query">हॉटस्पॉट नाम और पासवर्ड</string>
@@ -1109,8 +1115,6 @@
     <string name="native_aa_wake_verdict_destructive">इस यूनिट पर रोका गया</string>
     <string name="native_aa_wake_remeasure_confirm">Android Auto केवल तभी वायरलेस शुरू करता है जब वह ब्लूटूथ कनेक्शन को बदलते हुए देखता है। यदि वायरलेस अपने आप शुरू होना बंद हो गया है तो इसका उपयोग करें।</string>
     <string name="native_aa_wake_remeasure_done">अगले कनेक्शन पर ब्लूटूथ वेक को फिर से मापा जाएगा।</string>
-    <string name="announce_connection_configuration">अधिक लिंक टाइमआउट का अनुरोध करें</string>
-    <string name="announce_connection_configuration_description">Android Auto को 3 के बजाय 15 सेकंड प्रतीक्षा करने और बड़े सॉकेट बफ़र्स का उपयोग करने के लिए कहता है।</string>
     <string name="native_aa_ignore_external_bt">ब्लूटूथ संगतता जाँच को अनदेखा करें</string>
     <string name="native_aa_ignore_external_bt_description">यह यूनिट ब्लूटूथ को एक अलग मॉड्यूल पर रखती दिखती है जिस तक Android नहीं पहुँच सकता। डिफ़ॉल्ट रूप से बंद।</string>
 
@@ -1148,6 +1152,8 @@
     <string name="share_hotspot_qr_error">सक्रिय वाई-फ़ाई हॉटस्पॉट क्रेडेंशियल पुनर्प्राप्त नहीं किए जा सके। सुनिश्चित करें कि हॉटस्पॉट और स्थान चालू हैं।</string>
     <string name="use_libusb">मूल USB ड्राइवर का उपयोग करें</string>
     <string name="use_libusb_description">संचार के लिए libusb का उपयोग करें। Android के मानक USB API का उपयोग करने के लिए अक्षम करें।</string>
+    <string name="usb_keep_phone_media_audio">USB पर फ़ोन का मीडिया ऑडियो चालू रखें</string>
+    <string name="usb_keep_phone_media_audio_description">USB सेशन के दौरान Android Auto इस हेड यूनिट के लिए फ़ोन का Bluetooth मीडिया ऑडियो बंद कर सकता है। यह विकल्प ऐसा होने से रोकता है। इसके बाद फ़ोन कॉल, हेड यूनिट की जगह फ़ोन पर ही रह सकते हैं।</string>
 
     <string name="btn_show_qr">QR कोड दिखाएं</string>
     <string name="su_needed_keymaps_warning">चेतावनी: आपकी हेडयूनिट या तो रूटेड होनी चाहिए, या Shizuku इंस्टॉल होना चाहिए। यदि ऐसा है, तो संकेत मिलने पर आपको SU अधिकारों की अनुमति देनी होगी।</string>

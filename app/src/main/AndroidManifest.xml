@@ -403,11 +403,6 @@
             </intent-filter>
         </receiver>
 
-        <service
-            android:name=".aap.Elm327Service"
-            android:exported="false"
-            android:foregroundServiceType="connectedDevice" />
-
         <activity
             android:name=".main.AutomationActivity"
             android:excludeFromRecents="true"

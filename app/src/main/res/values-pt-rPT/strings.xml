@@ -165,7 +165,12 @@
     <string name="onb_change_later">Pode alterar isto mais tarde nas Definições.</string>
     <string name="dpi_automatic">Automático</string>
     <string name="dpi_automatic_desc">Utilizar densidade do dispositivo</string>
-    <string name="dpi_automatic_desc_format">Utiliza a densidade do dispositivo (%1$d DPI)</string>
+    <string name="dpi_widescreen_hint">Com %1$d DPI ou menos, o Android Auto mostra o mapa com um cartão multimédia ao lado, e o texto fica mais pequeno.</string>
+    <string name="dpi_automatic_desc_canvas">Utiliza %1$d DPI para %2$s, uma área de %3$dx%4$d dp</string>
+    <string name="dpi_row_value_format">%1$d (%2$dx%3$d dp)</string>
+    <string name="dpi_row_auto_format">Automático: %1$d (%2$dx%3$d dp)</string>
+    <string name="dpi_row_clamped_format">%1$d, enviado como %2$d (%3$dx%4$d dp)</string>
+    <string name="dpi_clamped_note">O Android Auto precisa de uma área de, pelo menos, 748x450 dp, por isso %1$d DPI é enviado como %2$d.</string>
     <string name="dpi_value_format">%1$d DPI</string>
     <string name="dpi_input_hint">DPI</string>
 
@@ -941,7 +946,7 @@
     <string name="vehicle_type_car">Carro</string>
     <string name="vehicle_type_truck">Camião</string>
     <string name="vehicle_type_motorcycle">Motociclo</string>
-    <string name="vehicle_type_forced_by_microphone">O microfone da unidade está desligado, pelo que o Android Auto é informado de que se trata de um motociclo.</string>
+    <string name="vehicle_type_forced_by_microphone">O microfone da unidade está desligado, por isso o telemóvel usa o seu. O Android Auto vai ver um motociclo.</string>
     <string name="vehicle_id_description">Identificador apenas interno. Alterar isto fará com que o telemóvel trate este como um veículo diferente.</string>
     <string name="head_unit_make_label">Fabricante</string>
     <string name="head_unit_make_description">Fabricante da unidade</string>
@@ -1089,6 +1094,7 @@
     <string name="connection_issue_banner_hands_free_held">Outro dispositivo já está a utilizar a ligação mãos-livres desta unidade. Desligue o outro dispositivo ou desligue o Bluetooth.</string>
     <string name="connection_issue_banner_hands_free_record_refused">O Bluetooth desta unidade não publicou o registo de mãos-livres necessário. A ligação por cabo ou outros modos sem fios não requerem este registo.</string>
     <string name="connection_issue_banner_home_wifi_rejoined">Esta unidade volta a ligar-se constantemente ao Wi-Fi da sua casa durante o Android Auto, o que pode fazer a imagem encravar, sobretudo em unidades de 2.4 GHz. Toque para desativar a religação automática a essa rede, ou aguarde até estar fora do alcance.</string>
+    <string name="connection_issue_banner_stale_usb_accessory">O Android Auto no telemóvel deixou de responder por USB e a app não conseguiu reiniciá-lo. Desligue o telemóvel, aguarde cinco segundos e volte a ligá-lo.</string>
     <string name="connection_issue_banner_dismiss">Fechar</string>
     <string name="auto_connect_pill_cancel">Parar ligação</string>
     <string name="connection_issue_remedy_hotspot_query">Nome e palavra-passe do hotspot</string>
@@ -1109,8 +1115,6 @@
     <string name="native_aa_wake_verdict_destructive">Retido nesta unidade</string>
     <string name="native_aa_wake_remeasure_confirm">O Android Auto só inicia a ligação sem fios quando deteta uma alteração na ligação Bluetooth.</string>
     <string name="native_aa_wake_remeasure_done">O despertar por Bluetooth será medido novamente na próxima ligação.</string>
-    <string name="announce_connection_configuration">Pedir um tempo limite de ligação mais longo</string>
-    <string name="announce_connection_configuration_description">Diz ao Android Auto para aguardar 15 segundos em vez de 3 antes de considerar a ligação perdida e utilizar buffers maiores.</string>
     <string name="native_aa_ignore_external_bt">Ignorar verificação de compatibilidade Bluetooth</string>
     <string name="native_aa_ignore_external_bt_description">Esta unidade parece ter o Bluetooth num módulo separado ao qual o Android não tem acesso. Desativado por predefinição.</string>
 
@@ -1148,6 +1152,8 @@
     <string name="share_hotspot_qr_error">Não foi possível obter os dados do hotspot Wi-Fi ativo. Certifique-se de que o hotspot e a Localização estão ligados.</string>
     <string name="use_libusb">Utilizar controlador USB nativo</string>
     <string name="use_libusb_description">Utilizar libusb para comunicação. Desative para utilizar a API USB padrão do Android.</string>
+    <string name="usb_keep_phone_media_audio">Manter o áudio multimédia do telemóvel por USB</string>
+    <string name="usb_keep_phone_media_audio_description">O Android Auto pode desativar o áudio multimédia Bluetooth do telemóvel para esta unidade principal durante uma sessão USB. Esta opção impede isso. As chamadas podem ficar no telemóvel em vez de na unidade principal.</string>
 
     <string name="btn_show_qr">Apresentar código QR</string>
     <string name="su_needed_keymaps_warning">Aviso: A sua unidade tem de estar desbloqueada (root) ou ter o Shizuku instalado. Deve permitir os direitos SU quando solicitado.</string>

@@ -484,7 +484,7 @@
     <string name="vehicle_type_car">سيارة</string>
     <string name="vehicle_type_truck">شاحنة</string>
     <string name="vehicle_type_motorcycle">دراجة نارية</string>
-    <string name="vehicle_type_forced_by_microphone">ميكروفون الوحدة الرئيسية معطّل، لذا يتم إبلاغ Android Auto بأن هذه دراجة نارية مهما كان الاختيار هنا. وهذا ما يجعل الهاتف يسجّل بنفسه.</string>
+    <string name="vehicle_type_forced_by_microphone">ميكروفون الوحدة الرئيسية متوقف، لذا يستخدم الهاتف ميكروفونه الخاص. سيرى Android Auto دراجة نارية.</string>
     <string name="vehicle_id_description">معرف داخلي فقط. تغييره سيجعل هاتفك يكتشف هذا كمركبة مختلفة، مما يعيد تعيين تفضيلات Android Auto لهذه السيارة.</string>
     <string name="head_unit_make_label">الشركة المصنعة</string>
     <string name="head_unit_make_description">الشركة المصنعة لوحدة الوسائط</string>
@@ -643,6 +643,8 @@
     <!-- Native USB Driver -->
     <string name="use_libusb">استخدام برنامج تشغيل USB الأصلي</string>
     <string name="use_libusb_description">استخدم libusb للاتصال. قم بتعطيله لاستخدام واجهة برمجة تطبيقات USB القياسية لنظام Android.</string>
+    <string name="usb_keep_phone_media_audio">إبقاء صوت الوسائط في الهاتف قيد التشغيل عبر USB</string>
+    <string name="usb_keep_phone_media_audio_description">قد يوقف Android Auto تشغيل صوت وسائط Bluetooth في الهاتف لوحدة الرأس هذه أثناء جلسة USB. يمنع هذا الخيار ذلك. وقد تبقى المكالمات على الهاتف بدلًا من وحدة الرأس.</string>
 
     <string name="software_video_decoder">مصدر برنامج فك الترميز</string>
     <string name="software_video_decoder_bundled">FFmpeg مدمج</string>
@@ -774,6 +776,12 @@
     <string name="onb_change_later">يمكنك تغيير هذا لاحقًا من الإعدادات.</string>
     <string name="dpi_automatic">تلقائي</string>
     <string name="dpi_automatic_desc">استخدام كثافة الجهاز</string>
+    <string name="dpi_widescreen_hint">عند %1$d DPI أو أقل، يعرض Android Auto الخريطة مع بطاقة وسائط بجانبها، ويصغر النص.</string>
+    <string name="dpi_automatic_desc_canvas">يستخدم %1$d DPI لـ %2$s، أي مساحة %3$dx%4$d dp</string>
+    <string name="dpi_row_value_format">%1$d (%2$dx%3$d dp)</string>
+    <string name="dpi_row_auto_format">تلقائي: %1$d (%2$dx%3$d dp)</string>
+    <string name="dpi_row_clamped_format">%1$d, أُرسلت كـ %2$d (%3$dx%4$d dp)</string>
+    <string name="dpi_clamped_note">يحتاج Android Auto إلى مساحة لا تقل عن 748x450 dp، لذلك يُرسل %1$d DPI على أنه %2$d.</string>
     <string name="onb_conn_usb_label">USB (أو محول)</string>
     <string name="onb_connection_self_detail">يشغّل الوضع المستقل Android Auto على هذا الجهاز دون توصيل هاتف.</string>
     <string name="connection_kind_all">الكل</string>
@@ -787,7 +795,6 @@
     <string name="resolution_high_bandwidth_message">تستهلك هذه الدقة نطاقًا تردديًا أكبر بكثير وتحتاج اتصالًا قويًا: شبكة WiFi جيدة بتردد 5GHz أو اتصال USB مستقر. إذا لاحظت تقطعًا، فاختر دقة أقل.</string>
     <string name="resolution_use_anyway">استخدام على أي حال</string>
     <string name="resolution_use_recommended">استخدام الموصى به</string>
-    <string name="dpi_automatic_desc_format">يستخدم كثافة الجهاز (%1$d DPI)</string>
     <string name="dpi_input_hint">DPI</string>
     <string name="onb_dpi_huge">ضخم</string>
     <string name="onb_vehicle_title">سيارتك</string>
@@ -1021,8 +1028,6 @@
     <string name="preflight_open_location">الموقع</string>
     <string name="preflight_later">لاحقاً</string>
     <string name="preflight_invalid_bssid">عنوان WiFi غير صالح. أدخل 6 أزواج سداسية عشرية مثل 02:1A:11:FF:3C:4D.</string>
-    <string name="announce_connection_configuration">طلب مهلة اتصال أطول</string>
-    <string name="announce_connection_configuration_description">يطلب هذا الخيار من Android Auto الانتظار 15 ثانية بدلاً من 3 قبل اعتبار الاتصال منقطعاً، واستخدام مخازن مؤقتة أكبر للمقبس. وهو موجه لراديو يخرج عن قناته لبضع ثوانٍ في منتصف الجلسة ويأخذ الاتصال معه. لم يُقَس ما إذا كان هاتفك يلتزم بأي من ذلك.</string>
     <string name="native_aa_ignore_external_bt">تجاهل فحص توافق البلوتوث</string>
     <string name="native_aa_ignore_external_bt_description">يبدو أن هذه الوحدة تُبقي البلوتوث على وحدة منفصلة لا يستطيع Android الوصول إليها، لذا يتم إيقاف Android Auto اللاسلكي تلقائياً. معطّل افتراضياً. فعّله فقط إذا كنت تعتقد أن ذلك خطأ: فعندما يكون الاكتشاف صحيحاً، يفشل الاتصال بصمت ويبدو السجل سليماً.</string>
     <string name="native_aa_setup_qr_title">الإعداد عبر رمز QR</string>
@@ -1236,6 +1241,7 @@
     <string name="connection_issue_banner_stale_endpoint">يحاول هاتفك الوصول إلى هذه الوحدة على عنوان شبكة قديم. إذا لم يتصل، فتناسَ هذه الوحدة في Android Auto على هاتفك ثم اتصل مرة أخرى.</string>
     <string name="connection_issue_banner_hands_free_record_refused">رفض بلوتوث هذه الوحدة إعداد اليدين الحرة الذي يحتاجه Android Auto، لذا قد لا يبدأ الاتصال اللاسلكي. الاتصال بكابل أو بوضع لاسلكي آخر لا يحتاج إلى ذلك.</string>
     <string name="connection_issue_banner_home_wifi_rejoined">تعيد هذه الوحدة الاتصال بشبكة WiFi المنزلية باستمرار أثناء Android Auto، مما قد يسبب تقطع الصورة، خصوصاً في الوحدات التي تعمل على 2.4 غيغاهرتز. انقر لإيقاف إعادة الاتصال التلقائي بتلك الشبكة، أو انتظر حتى تبتعد عن نطاقها.</string>
+    <string name="connection_issue_banner_stale_usb_accessory">توقف Android Auto على الهاتف عن الاستجابة عبر USB، ولم يتمكن التطبيق من إعادة تشغيله. افصل الهاتف، وانتظر خمس ثوانٍ، ثم أعد توصيله.</string>
     <string name="native_aa_wake_remeasure">إعادة قياس إيقاظ البلوتوث</string>
     <string name="native_aa_wake_verdict_unmeasured">لم يُقَس بعد</string>
     <string name="native_aa_wake_verdict_safe">آمن على هذه الوحدة</string>

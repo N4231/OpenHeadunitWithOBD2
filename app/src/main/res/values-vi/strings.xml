@@ -502,7 +502,7 @@
     <string name="vehicle_type_car">Ô tô</string>
     <string name="vehicle_type_truck">Xe tải</string>
     <string name="vehicle_type_motorcycle">Xe máy</string>
-    <string name="vehicle_type_forced_by_microphone">Micro của đầu máy đang tắt nên dù chọn gì ở đây, Android Auto vẫn được thông báo rằng đây là một xe máy. Đó chính là điều khiến điện thoại tự ghi âm.</string>
+    <string name="vehicle_type_forced_by_microphone">Micro của đầu máy đang tắt nên điện thoại dùng micro của chính nó. Android Auto sẽ thấy một xe máy.</string>
     <string name="vehicle_id_description">Định danh nội bộ. Đổi giá trị này sẽ khiến điện thoại coi đây là xe khác và đặt lại tuỳ chỉnh Android Auto cho xe này.</string>
     <string name="head_unit_make_label">Hãng</string>
     <string name="head_unit_make_description">Hãng sản xuất headunit</string>
@@ -649,6 +649,8 @@
     <!-- Native USB Driver -->
     <string name="use_libusb">Sử dụng trình điều khiển USB gốc</string>
     <string name="use_libusb_description">Sử dụng libusb để giao tiếp. Tắt để sử dụng API USB tiêu chuẩn của Android.</string>
+    <string name="usb_keep_phone_media_audio">Giữ âm thanh nội dung nghe nhìn của điện thoại qua USB</string>
+    <string name="usb_keep_phone_media_audio_description">Android Auto có thể tắt âm thanh nội dung nghe nhìn Bluetooth của điện thoại cho thiết bị này trong phiên USB. Tùy chọn này ngăn việc đó. Khi đó, cuộc gọi có thể ở lại điện thoại thay vì thiết bị.</string>
 
     <string name="software_video_decoder">Nguồn bộ giải mã phần mềm</string>
     <string name="software_video_decoder_bundled">FFmpeg tích hợp</string>
@@ -778,6 +780,12 @@
     <string name="onb_change_later">Bạn có thể thay đổi điều này sau trong Cài đặt.</string>
     <string name="dpi_automatic">Tự động</string>
     <string name="dpi_automatic_desc">Dùng mật độ của thiết bị</string>
+    <string name="dpi_widescreen_hint">Ở %1$d DPI trở xuống, Android Auto hiển thị bản đồ kèm thẻ nội dung nghe nhìn bên cạnh, và văn bản nhỏ hơn.</string>
+    <string name="dpi_automatic_desc_canvas">Dùng %1$d DPI cho %2$s, vùng hiển thị %3$dx%4$d dp</string>
+    <string name="dpi_row_value_format">%1$d (%2$dx%3$d dp)</string>
+    <string name="dpi_row_auto_format">Tự động: %1$d (%2$dx%3$d dp)</string>
+    <string name="dpi_row_clamped_format">%1$d, gửi dưới dạng %2$d (%3$dx%4$d dp)</string>
+    <string name="dpi_clamped_note">Android Auto cần vùng hiển thị tối thiểu 748x450 dp, nên %1$d DPI được gửi dưới dạng %2$d.</string>
     <string name="onb_conn_usb_label">USB (hoặc bộ chuyển đổi)</string>
     <string name="onb_connection_self_detail">Chế độ độc lập chạy Android Auto trên thiết bị này mà không cần kết nối điện thoại.</string>
     <string name="connection_kind_all">Tất cả</string>
@@ -791,7 +799,6 @@
     <string name="resolution_high_bandwidth_message">Độ phân giải này dùng nhiều băng thông hơn và cần kết nối mạnh: WiFi 5GHz tốt hoặc kết nối USB ổn định. Nếu thấy giật, hãy chọn độ phân giải thấp hơn.</string>
     <string name="resolution_use_anyway">Vẫn dùng</string>
     <string name="resolution_use_recommended">Dùng khuyến nghị</string>
-    <string name="dpi_automatic_desc_format">Dùng mật độ của thiết bị (%1$d DPI)</string>
     <string name="dpi_input_hint">DPI</string>
     <string name="onb_dpi_huge">Cực lớn</string>
     <string name="onb_vehicle_title">Xe của bạn</string>
@@ -1026,8 +1033,6 @@
     <string name="preflight_open_location">Vị trí</string>
     <string name="preflight_later">Để sau</string>
     <string name="preflight_invalid_bssid">Địa chỉ WiFi không hợp lệ. Nhập 6 cặp ký tự thập lục phân (vd: 02:1A:11:FF:3C:4D).</string>
-    <string name="announce_connection_configuration">Yêu cầu thời gian chờ liên kết dài hơn</string>
-    <string name="announce_connection_configuration_description">Yêu cầu Android Auto đợi 15 giây thay vì 3 giây trước khi coi liên kết là đã chết, và sử dụng vùng đệm socket lớn hơn. Tính năng này nhắm đến trường hợp radio rời kênh trong vài giây giữa phiên và kéo theo cả kết nối. Chưa đo được liệu điện thoại của bạn có tuân theo điều này hay không.</string>
     <string name="native_aa_ignore_external_bt">Bỏ qua kiểm tra tương thích Bluetooth</string>
     <string name="native_aa_ignore_external_bt_description">Thiết bị này có vẻ giữ Bluetooth trên một mô-đun riêng mà Android không tiếp cận được, nên Android Auto không dây bị tắt tự động. Tắt theo mặc định. Chỉ bật nếu bạn cho rằng điều đó là sai: nếu phát hiện đúng, kết nối sẽ thất bại trong im lặng và nhật ký trông vẫn bình thường.</string>
     <string name="native_aa_setup_qr_title">Thiết lập bằng mã QR</string>
@@ -1241,6 +1246,7 @@
     <string name="connection_issue_banner_stale_endpoint">Điện thoại đang thử một địa chỉ mạng cũ của thiết bị này. Nếu không kết nối được, hãy quên thiết bị này trong Android Auto trên điện thoại rồi kết nối lại.</string>
     <string name="connection_issue_banner_hands_free_record_refused">Bluetooth của thiết bị này đã từ chối thiết lập rảnh tay mà Android Auto cần, nên kết nối không dây có thể không khởi động. Kết nối bằng cáp hoặc chế độ không dây khác không cần đến nó.</string>
     <string name="connection_issue_banner_home_wifi_rejoined">Thiết bị này liên tục kết nối lại WiFi nhà bạn khi dùng Android Auto, có thể làm hình bị giật, nhất là trên thiết bị 2,4 GHz. Nhấn để tắt tự động kết nối lại với mạng đó, hoặc chờ đến khi bạn ra khỏi vùng phủ sóng của mạng.</string>
+    <string name="connection_issue_banner_stale_usb_accessory">Android Auto trên điện thoại đã ngừng phản hồi qua USB và ứng dụng không thể khởi động lại. Hãy rút điện thoại, chờ năm giây rồi cắm lại.</string>
     <string name="native_aa_wake_remeasure">Đo lại việc đánh thức Bluetooth</string>
     <string name="native_aa_wake_verdict_unmeasured">Chưa đo</string>
     <string name="native_aa_wake_verdict_safe">An toàn trên thiết bị này</string>
