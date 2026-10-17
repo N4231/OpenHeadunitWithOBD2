@@ -35,6 +35,7 @@ import java.util.*
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import com.andrerinas.openheadunit.R
+import com.andrerinas.openheadunit.utils.BluetoothHelper
 
 /**
  * ELM327 (OBD2 Bluetooth Classic & BLE) と通信して車速を取得するサービス
@@ -118,8 +119,11 @@ class Elm327Service : Service() {
                         }
                     }
 
-                    val bluetoothManager = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
-                    val adapter = bluetoothManager.adapter
+                    val adapter = BluetoothHelper.getBluetoothAdapter(this@Elm327Service)
+                    if (adapter == null) {
+                        errorMessage.value = "Bluetoothアダプターが見つかりません"
+                        return@launch
+                    }
 
                     try {
                         if (adapter.isDiscovering) adapter.cancelDiscovery()
@@ -131,13 +135,17 @@ class Elm327Service : Service() {
                     try {
                         Log.d(TAG, "Trying Classic Bluetooth...")
                         obdConnection = ClassicObdConnection(device)
-                        obdConnection?.connect()
+                        withTimeout(8000) {
+                            obdConnection?.connect()
+                        }
                     } catch (e: Exception) {
                         Log.d(TAG, "Classic Bluetooth failed (${e.message}), trying BLE...")
                         obdConnection?.close()
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
                             obdConnection = BleObdConnection(this@Elm327Service, device)
-                            obdConnection?.connect()
+                            withTimeout(10000) {
+                                obdConnection?.connect()
+                            }
                         } else {
                             throw IOException("BLE not supported on this OS version")
                         }
@@ -175,13 +183,13 @@ class Elm327Service : Service() {
                             }
                             delay(100) // Android Autoが要求する10Hz(100ms間隔)に最適化
                         } catch (e: Exception) {
-                            if (e is CancellationException) throw e
+                            if (e is CancellationException && e !is TimeoutCancellationException) throw e
                             Log.e(TAG, "通信中にエラーが発生しました、再接続を試みます: ${e.message}")
                             throw e // ループを抜けて再接続処理へ
                         }
                     }
                 } catch (e: Exception) {
-                    if (e is CancellationException) throw e
+                    if (e is CancellationException && e !is TimeoutCancellationException) throw e
                     Log.e(TAG, "OBD2 Connection error", e)
                     errorMessage.value = "接続エラー: ${e.message} (5秒後に再接続します)"
                     connectionState.value = false
@@ -275,6 +283,12 @@ class BleObdConnection(private val context: Context, private val device: Bluetoo
     override suspend fun connect() = suspendCancellableCoroutine<Unit> { cont ->
         gatt = device.connectGatt(context, false, object : BluetoothGattCallback() {
             override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
+                if (status != BluetoothGatt.GATT_SUCCESS) {
+                    rxChannel.close()
+                    if (cont.isActive) cont.resumeWithException(IOException("BLE GATT status error: $status"))
+                    g.close()
+                    return
+                }
                 if (newState == BluetoothProfile.STATE_CONNECTED) {
                     g.discoverServices()
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
