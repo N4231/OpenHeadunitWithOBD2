@@ -95,6 +95,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -3306,7 +3307,8 @@ class SettingsFragment : Fragment() {
             requireContext().startService(obdIntent)
         }
 
-        val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main + kotlinx.coroutines.SupervisorJob())
+        val job = SupervisorJob()
+        val scope = CoroutineScope(Dispatchers.Main + job)
 
         scope.launch {
             com.andrerinas.openheadunit.aap.Elm327Service.connectionState.collect { connected ->
@@ -3329,7 +3331,7 @@ class SettingsFragment : Fragment() {
         }
 
         dialog.setOnDismissListener {
-            scope.cancel()
+            job.cancel()
             requireContext().stopService(Intent(requireContext(), com.andrerinas.openheadunit.aap.Elm327Service::class.java))
         }
     }

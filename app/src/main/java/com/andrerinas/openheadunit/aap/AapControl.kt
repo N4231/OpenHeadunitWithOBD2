@@ -23,6 +23,7 @@ import com.andrerinas.openheadunit.utils.Settings
 import com.andrerinas.openheadunit.utils.VideoFallbackPolicy
 import com.andrerinas.openheadunit.utils.Utils
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.collectLatest
 
 interface AapControl {
     fun execute(message: AapMessage): Int
@@ -303,10 +304,10 @@ internal class AapControlSensor(
 
                     speedJob?.cancel()
                     speedJob = sensorScope.launch {
-                        Elm327Service.currentVehicleSpeed.collectLatest { speed ->
+                        Elm327Service.currentVehicleSpeed.collect { speed ->
                             if (!aapTransport.isAlive) {
-                                cancel()
-                                return@collectLatest
+                                this@launch.cancel()
+                                return@collect
                             }
                             aapTransport.send(com.andrerinas.openheadunit.aap.protocol.messages.SpeedEvent(speed))
                             aapTransport.send(com.andrerinas.openheadunit.aap.protocol.messages.DeadReckoningEvent(speed))
